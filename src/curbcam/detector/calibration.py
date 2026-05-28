@@ -35,11 +35,11 @@ def speed_from_track(track: TrackedObject, cal: Calibration) -> float | None:
 
     first = track.detections[0]
     last = track.detections[-1]
-    dt = last.frame_ts - first.frame_ts
-    if dt <= 0:
+    elapsed = last.frame_ts - first.frame_ts
+    if elapsed <= 0:
         return None
 
     dx_px = abs(last.centroid[0] - first.centroid[0])
     mm_per_px = cal.mm_per_px_l2r if track.direction == "L2R" else cal.mm_per_px_r2l
-    mm_per_s = (dx_px / dt) * mm_per_px
+    mm_per_s = (dx_px / elapsed) * mm_per_px
     return mm_per_s * _MM_PER_SEC_TO_KPH
