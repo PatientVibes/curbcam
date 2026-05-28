@@ -20,3 +20,9 @@ class TrackedObject:
     detections: list[Detection] = field(default_factory=list)
     direction: Direction | None = None
     speed_kph: float | None = None
+
+
+# A rectangle defining the region of the source frame the detector should
+# inspect — x_left, y_upper, x_right, y_lower in source-image pixels.
+# Distinct from `Detection.bbox` which is (x, y, w, h).
+type CropRect = tuple[int, int, int, int]

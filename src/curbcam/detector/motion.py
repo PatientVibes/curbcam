@@ -17,9 +17,7 @@ use real elapsed wall-clock between captures, not detector compute time.
 import cv2
 import numpy as np
 
-from curbcam.detector.types import Detection
-
-BBox = tuple[int, int, int, int]  # x_left, y_upper, x_right, y_lower
+from curbcam.detector.types import CropRect, Detection
 
 
 def find_motion(
@@ -27,7 +25,7 @@ def find_motion(
     curr_gray: np.ndarray,
     *,
     min_area_px: int,
-    crop: BBox | None,
+    crop: CropRect | None,
     frame_ts: float,
 ) -> list[Detection]:
     """Return Detections for connected motion blobs above ``min_area_px``."""

@@ -18,7 +18,7 @@ def test_find_motion_detects_moved_rectangle() -> None:
     # The diff has two blobs (the vacated area and the newly-occupied area).
     # We expect 1 or 2 detections; what matters is that we get a sane bbox
     # whose centroid is within the moving rectangle's union.
-    assert len(detections) >= 1
+    assert 1 <= len(detections) <= 4, f"expected 1-4 detections, got {len(detections)}"
     biggest = max(detections, key=lambda d: d.area_px)
     cx, _ = biggest.centroid
     assert 100 <= cx <= 200, f"centroid x={cx} should be inside the motion zone"
