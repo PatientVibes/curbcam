@@ -27,8 +27,10 @@ dev = [
     "mypy>=1.10",
 ]
 
-[project.scripts]
-curbcam = "curbcam.cli:app"
+# [project.scripts] is intentionally deferred until src/curbcam/cli.py lands
+# (Task 15 of the MVP-1 plan). Re-adding `curbcam = "curbcam.cli:app"` here
+# before the module exists would create an entry-point that fails to import
+# on `curbcam` invocation.
 
 [build-system]
 requires = ["hatchling"]

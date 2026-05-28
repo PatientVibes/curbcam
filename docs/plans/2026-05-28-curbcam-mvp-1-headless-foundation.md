@@ -3166,6 +3166,29 @@ git commit -m "feat(pipeline): PipelineRunner end-to-end with integration test"
 **Files:**
 - Create: `src/curbcam/cli.py`
 - Create: `tests/integration/test_cli.py`
+- Modify: `pyproject.toml` (re-add the `[project.scripts]` entry — see Step 0)
+
+- [ ] **Step 0: Re-add the deferred entry point**
+
+PR #1 removed `[project.scripts]` because the target module (`curbcam.cli`) didn't yet exist (would have made `pip install -e . && curbcam` fail). Re-add it now that `cli.py` is about to land:
+
+In `pyproject.toml`, replace the placeholder comment block:
+
+```
+# [project.scripts] is intentionally deferred until src/curbcam/cli.py lands
+# (Task 15 of the MVP-1 plan). Re-adding `curbcam = "curbcam.cli:app"` here
+# before the module exists would create an entry-point that fails to import
+# on `curbcam` invocation.
+```
+
+with:
+
+```
+[project.scripts]
+curbcam = "curbcam.cli:app"
+```
+
+Verify: after step 4 below (writing `cli.py`), `uv run curbcam --help` should print Typer's usage banner.
 
 - [ ] **Step 1: Write the failing test**
 
