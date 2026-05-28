@@ -79,3 +79,33 @@ def test_tracker_flush_finalises_remaining_tracks_and_clears_state() -> None:
 
     # Subsequent flush is a no-op.
     assert t.flush() == []
+
+
+def test_tracker_creates_at_most_one_new_track_per_frame() -> None:
+    """When find_motion returns multiple blobs for the same object, only
+    the largest unmatched detection should start a new track. Prevents
+    duplicate finalised TrackedObjects for one moving vehicle.
+    """
+    t = Tracker(max_dist_px=50, min_track_frames=2)
+    # Two unmatched detections on frame 1: a small spurious blob and the
+    # main object. Only the larger should start a track.
+    small = Detection(bbox=(100, 100, 10, 10), centroid=(105, 105), area_px=200, frame_ts=0.0)
+    large = Detection(bbox=(200, 100, 30, 30), centroid=(215, 115), area_px=1500, frame_ts=0.0)
+    t.update([small, large])
+    # Frame 2: the large object continues; the small one doesn't reappear.
+    t.update(
+        [
+            Detection(
+                bbox=(230, 100, 30, 30),
+                centroid=(245, 115),
+                area_px=1500,
+                frame_ts=0.1,
+            )
+        ]
+    )
+    completed = t.update([])
+
+    # Exactly one track finalised, and it must be the one that followed
+    # the large detection (centroid x went 215 → 245), not the small one.
+    assert len(completed) == 1, f"expected 1 track (single-object guarantee), got {len(completed)}"
+    assert completed[0].detections[0].area_px == 1500

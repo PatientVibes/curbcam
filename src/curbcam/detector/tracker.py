@@ -80,9 +80,15 @@ class Tracker:
                     finalised.append(_finalise(track))
                 # else: silently drop (too short to be meaningful)
 
-        # Any detections still unmatched start new tracks.
-        for d in unmatched:
-            survivors.append(_LiveTrack(id=uuid.uuid4().hex[:8], detections=[d]))
+        # Single-object-at-a-time: when multiple unmatched detections remain,
+        # only the largest starts a new track. Prevents duplicate tracks when
+        # find_motion returns multiple blobs for the same vehicle (e.g. the
+        # vacated and newly-occupied diff blobs that didn't merge under
+        # dilation). For multi-object scenes a Hungarian/Kalman tracker
+        # would handle the assignment differently — see module docstring.
+        if unmatched:
+            largest = max(unmatched, key=lambda d: d.area_px)
+            survivors.append(_LiveTrack(id=uuid.uuid4().hex[:8], detections=[largest]))
 
         self._live = survivors
         return finalised
