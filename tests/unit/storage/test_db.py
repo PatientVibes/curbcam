@@ -94,3 +94,43 @@ def test_unique_active_calibration_constraint_enforced_at_db_layer(
         )
         with pytest.raises(sa_exc.IntegrityError):
             s.commit()
+
+
+def test_ensure_schema_creates_tables_and_stamps_alembic_version(
+    tmp_path: Path,
+) -> None:
+    """Bootstrap path must leave the DB ready for future `alembic upgrade head`."""
+    from curbcam.storage.db import LATEST_MIGRATION_REVISION, Database, ensure_schema
+
+    db = Database.for_sqlite_path(tmp_path / "stamped.sqlite")
+    ensure_schema(db)
+
+    with db.engine.connect() as conn:
+        # Tables exist
+        tables = {
+            r[0]
+            for r in conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert "events" in tables
+        assert "calibrations" in tables
+        assert "alembic_version" in tables
+
+        # Stamped to the latest revision
+        row = conn.exec_driver_sql("SELECT version_num FROM alembic_version LIMIT 1").fetchone()
+        assert row is not None
+        assert row[0] == LATEST_MIGRATION_REVISION
+
+
+def test_ensure_schema_is_idempotent(tmp_path: Path) -> None:
+    """Calling ensure_schema twice must not duplicate the alembic_version row."""
+    from curbcam.storage.db import Database, ensure_schema
+
+    db = Database.for_sqlite_path(tmp_path / "stamped.sqlite")
+    ensure_schema(db)
+    ensure_schema(db)  # second call must not raise or duplicate
+
+    with db.engine.connect() as conn:
+        count = conn.exec_driver_sql("SELECT COUNT(*) FROM alembic_version").fetchone()[0]
+        assert count == 1
