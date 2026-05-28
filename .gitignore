@@ -37,3 +37,7 @@ media/
 # Local env
 .env
 .env.local
+
+# Ephemeral co-plan / code-review logs
+.codex-review-*.txt
+.opencode-review-*.txt
