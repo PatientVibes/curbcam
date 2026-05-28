@@ -62,21 +62,34 @@ class PipelineRunner:
         self._camera.open()
         try:
             prev_gray = None
-            last_full_frame = None
+            prev_full_frame = None  # BGR frame that prev_gray came from
+            last_full_frame = None  # BGR of the most recent frame read
             while not self._stop.is_set():
                 got = self._camera.read()
                 if got is None:
                     break
                 frame_bgr, ts = got
-                last_full_frame = frame_bgr
                 curr_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
                 if prev_gray is not None:
-                    self._process_frame(prev_gray, curr_gray, frame_bgr, frame_ts=ts)
+                    # Finalized tracks come from update() — they were last
+                    # matched in PREV frame (not present in current).
+                    # last_full_frame at this point is the BGR that prev_gray
+                    # came from (set at end of previous iteration), so it is
+                    # the last frame the vehicle was actually present in.
+                    self._process_frame(prev_gray, curr_gray, last_full_frame, frame_ts=ts)
+                prev_full_frame = last_full_frame
                 prev_gray = curr_gray
+                last_full_frame = frame_bgr
             # Source exhausted — flush any in-flight track.
-            if last_full_frame is not None:
+            # The track's last active detection came from diff(prev_gray,
+            # last_gray) — the vehicle was present in prev_full_frame (the
+            # frame preceding the final one). Use prev_full_frame so the
+            # event image shows the vehicle rather than a potentially-empty
+            # final frame.
+            flush_frame = prev_full_frame if prev_full_frame is not None else last_full_frame
+            if flush_frame is not None:
                 for track in self._tracker.flush():
-                    self._persist_track(track, last_full_frame)
+                    self._persist_track(track, flush_frame)
         finally:
             self._camera.close()
 
@@ -130,7 +143,10 @@ class PipelineRunner:
 
     # -- internals --
 
-    def _process_frame(self, prev_gray, curr_gray, frame_bgr, *, frame_ts: float) -> None:  # type: ignore[no-untyped-def]
+    def _process_frame(self, prev_gray, curr_gray, prev_frame_bgr, *, frame_ts: float) -> None:  # type: ignore[no-untyped-def]
+        """prev_frame_bgr is the BGR frame that prev_gray came from — the
+        last frame where any finalized track was actually present.
+        """
         detections = find_motion(
             prev_gray,
             curr_gray,
@@ -140,7 +156,7 @@ class PipelineRunner:
         )
         finalised = self._tracker.update(detections)
         for track in finalised:
-            self._persist_track(track, frame_bgr)
+            self._persist_track(track, prev_frame_bgr)
 
     def _persist_track(self, track, last_frame_bgr) -> None:  # type: ignore[no-untyped-def]
         cal = self._calibrations.get_active()
