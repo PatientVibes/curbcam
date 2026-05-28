@@ -510,10 +510,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from curbcam.detector.types import Detection
-
-
-BBox = tuple[int, int, int, int]   # x_left, y_upper, x_right, y_lower
+from curbcam.detector.types import CropRect, Detection
 
 
 def find_motion(
@@ -521,7 +518,7 @@ def find_motion(
     curr_gray: np.ndarray,
     *,
     min_area_px: int,
-    crop: BBox | None,
+    crop: CropRect | None,
     frame_ts: float,
 ) -> list[Detection]:
     """Return Detections for connected motion blobs above ``min_area_px``."""
@@ -800,7 +797,7 @@ git commit -m "feat(detector): greedy single-object tracker"
 ```python
 """Pydantic-typed configuration model + YAML persistence."""
 from curbcam.config.schema import (
-    BBox,
+    CropRect,
     CameraSettings,
     DetectorSettings,
     RetentionSettings,
@@ -810,7 +807,7 @@ from curbcam.config.schema import (
 from curbcam.config.store import ConfigStore
 
 __all__ = [
-    "BBox",
+    "CropRect",
     "CameraSettings",
     "ConfigStore",
     "DetectorSettings",
@@ -894,7 +891,7 @@ from pydantic import BaseModel, Field, PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BBox = tuple[int, int, int, int]   # x_left, y_upper, x_right, y_lower
+from curbcam.detector.types import CropRect
 
 
 class CameraSettings(BaseModel):
@@ -907,7 +904,7 @@ class DetectorSettings(BaseModel):
     min_area_px: PositiveInt = 800
     min_track_frames: PositiveInt = 5
     max_dist_px: PositiveInt = 100
-    crop: BBox | None = None
+    crop: CropRect | None = None
 
 
 class RetentionSettings(BaseModel):

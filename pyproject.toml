@@ -58,9 +58,21 @@ strict = true
 warn_unreachable = true
 
 [tool.uv]
-# picamera2 is RPi/Linux-only.  python-prctl (a picamera2 dependency)
-# has no wheels for Windows/macOS and must not be built from source on
-# dev machines.  Restrict lock resolution to Windows-only so uv never
-# tries to build the Linux-only picamera2 stack on this host; the RPi
-# installs via `uv pip install -e ".[picamera2]"` independently.
-environments = ["sys_platform == 'win32'"]
+# Enumerate the platforms the lockfile must support so uv produces a
+# universal lock that works on Pi/Linux/Docker AND Windows dev machines.
+# `picamera2` is gated `sys_platform == 'linux'` at the dep level so it
+# is only present on Linux entries of the lock.
+environments = [
+    "sys_platform == 'linux'",
+    "sys_platform == 'win32'",
+]
+
+# python-prctl (transitive dep of picamera2) has no PyPI wheels and needs
+# libcap-dev to build from source, which not every dev machine has. We
+# don't actually need to resolve its deps to generate the lock — declare
+# the metadata manually so uv can include it on Linux without invoking
+# the sdist build during `uv lock` on Windows/Mac.
+[[tool.uv.dependency-metadata]]
+name = "python-prctl"
+version = "1.8.1"
+requires-dist = []
