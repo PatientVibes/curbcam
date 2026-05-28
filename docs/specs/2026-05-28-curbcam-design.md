@@ -244,10 +244,16 @@ calibration #3, Wednesday onward used #4" is a real debugging lifeline.
 
 ```
 media/
-├── events/YYYY/MM/DD/event_<id>.jpg     (full frame)
-├── thumbs/YYYY/MM/DD/event_<id>.jpg     (320x180)
+├── events/YYYY/MM/DD/event_<id>.jpg     (full frame, source resolution)
+├── thumbs/YYYY/MM/DD/event_<id>.jpg     (320 px wide, source aspect ratio preserved)
 └── alignment/                            (transient preview frames)
 ```
+
+Thumbnails preserve the source aspect ratio rather than forcing a fixed
+height because cameras ship in 4:3, 16:9, and other ratios — squishing a
+1280×960 Pi Cam frame to 320×180 looks bad and loses detail. The
+dashboard grid layout (MVP-2) sets a fixed `width: 320px; height: auto;`
+on each thumbnail `<img>` so uneven heights flow naturally.
 
 Date-bucketed so a year of events doesn't dump 100k files in one folder.
 Rotation is a single background task driven by `max_events_per_day` and
