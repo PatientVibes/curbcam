@@ -2,6 +2,9 @@
 import datetime as dt
 from pathlib import Path
 
+import pytest
+from sqlalchemy import exc as sa_exc
+
 from curbcam.storage import Calibration, Database, Event
 from curbcam.storage.models import Base
 
@@ -62,9 +65,6 @@ def test_unique_active_calibration_constraint_enforced_at_db_layer(
     tmp_path: Path,
 ) -> None:
     """Defense in depth: even bypassing the repo, the partial unique index fires."""
-    import datetime as dt  # noqa: I001
-    import sqlalchemy.exc as sa_exc
-
     db = Database.for_sqlite_path(tmp_path / "constraint.sqlite")
     Base.metadata.create_all(db.engine)
     with db.session() as s:
@@ -94,7 +94,3 @@ def test_unique_active_calibration_constraint_enforced_at_db_layer(
         )
         with pytest.raises(sa_exc.IntegrityError):
             s.commit()
-
-
-# Imports for the test above — kept here to keep the simple test above untouched.
-import pytest  # noqa: E402

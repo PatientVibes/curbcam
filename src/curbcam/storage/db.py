@@ -4,6 +4,8 @@ Enables SQLite WAL journaling at first connection so the writer (detector
 thread) and readers (web server, in MVP-2) never block each other.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event
@@ -12,12 +14,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 class Database:
     def __init__(self, url: str) -> None:
-        self._engine: Engine = create_engine(url, future=True)
+        self._engine: Engine = create_engine(url)
         _enable_sqlite_wal(self._engine)
         self._sessionmaker = sessionmaker(bind=self._engine, expire_on_commit=False)
 
     @classmethod
-    def for_sqlite_path(cls, path: Path) -> "Database":
+    def for_sqlite_path(cls, path: Path) -> Database:
         path.parent.mkdir(parents=True, exist_ok=True)
         return cls(f"sqlite:///{path}")
 

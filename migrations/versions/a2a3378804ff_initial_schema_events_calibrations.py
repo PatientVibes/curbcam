@@ -1,8 +1,8 @@
 """initial schema: events + calibrations
 
-Revision ID: ce995726050e
+Revision ID: a2a3378804ff
 Revises: 
-Create Date: 2026-05-28 15:15:34.750125
+Create Date: 2026-05-28 15:30:54.008609
 
 """
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = 'ce995726050e'
+revision: str = 'a2a3378804ff'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -22,9 +22,9 @@ def upgrade() -> None:
     op.create_table('calibrations',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('created_utc', sa.DateTime(), nullable=False),
-    sa.Column('mm_per_px_l2r', sa.Numeric(), nullable=False),
-    sa.Column('mm_per_px_r2l', sa.Numeric(), nullable=False),
-    sa.Column('reference_distance_mm', sa.Numeric(), nullable=False),
+    sa.Column('mm_per_px_l2r', sa.Float(), nullable=False),
+    sa.Column('mm_per_px_r2l', sa.Float(), nullable=False),
+    sa.Column('reference_distance_mm', sa.Float(), nullable=False),
     sa.Column('reference_points_json', sa.Text(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('notes', sa.Text(), nullable=True),
@@ -36,7 +36,7 @@ def upgrade() -> None:
     op.create_table('events',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('ts_utc', sa.DateTime(), nullable=False),
-    sa.Column('speed_kph', sa.Numeric(), nullable=False),
+    sa.Column('speed_kph', sa.Float(), nullable=False),
     sa.Column('direction', sa.String(length=3), nullable=False),
     sa.Column('frame_count', sa.Integer(), nullable=False),
     sa.Column('track_len_px', sa.Integer(), nullable=False),
