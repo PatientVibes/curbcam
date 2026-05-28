@@ -29,10 +29,8 @@ dev = [
     "types-PyYAML>=6.0",
 ]
 
-# [project.scripts] is intentionally deferred until src/curbcam/cli.py lands
-# (Task 15 of the MVP-1 plan). Re-adding `curbcam = "curbcam.cli:app"` here
-# before the module exists would create an entry-point that fails to import
-# on `curbcam` invocation.
+[project.scripts]
+curbcam = "curbcam.cli:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -58,6 +56,9 @@ exclude = ["migrations"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "RUF"]
 ignore = ["E501"]   # ruff format handles line length
+
+[tool.ruff.lint.per-file-ignores]
+"src/curbcam/cli.py" = ["B008"]   # typer.Option() in defaults is the canonical Typer pattern
 
 [tool.mypy]
 python_version = "3.12"

@@ -23,6 +23,7 @@ def camera_from_source(
     *,
     resolution: tuple[int, int],
     fps_target: float,
+    loop: bool = True,
 ) -> Camera:
     if source.startswith("picamera2:"):
         idx = int(source.split(":", 1)[1])
@@ -35,5 +36,5 @@ def camera_from_source(
         return RtspSource(source, resolution=resolution, fps_target=fps_target)
     if source.startswith("file:"):
         path = Path(source.split(":", 1)[1])
-        return FileReplaySource(path, fps_target=fps_target, loop=True)
+        return FileReplaySource(path, fps_target=fps_target, loop=loop)
     raise ValueError(f"Unknown camera source: {source!r}")
