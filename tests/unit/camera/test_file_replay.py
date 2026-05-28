@@ -90,3 +90,32 @@ def test_file_replay_picks_up_uppercase_extensions(tmp_path: Path) -> None:
         assert cam.read() is not None  # at least one frame discovered
     finally:
         cam.close()
+
+
+def test_file_replay_skips_undecodable_middle_frame_and_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A corrupt middle frame must NOT be confused with source exhaustion."""
+    import logging
+
+    import cv2
+    import numpy as np
+
+    # Three frames: good, corrupt-stub, good
+    cv2.imwrite(str(tmp_path / "0001.jpg"), np.full((10, 10, 3), 50, dtype=np.uint8))
+    (tmp_path / "0002.jpg").write_bytes(b"this is not a jpeg")
+    cv2.imwrite(str(tmp_path / "0003.jpg"), np.full((10, 10, 3), 200, dtype=np.uint8))
+
+    cam = FileReplaySource(tmp_path, fps_target=120.0)
+    cam.open()
+    try:
+        with caplog.at_level(logging.WARNING, logger="curbcam.camera.file_replay"):
+            frames = []
+            while (got := cam.read()) is not None:
+                frames.append(got)
+        # Both good frames were yielded; the corrupt one was skipped.
+        assert len(frames) == 2
+        # A warning was logged for the skipped file.
+        assert any("Failed to decode replay frame" in r.message for r in caplog.records)
+    finally:
+        cam.close()

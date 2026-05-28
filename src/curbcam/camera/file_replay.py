@@ -9,11 +9,14 @@ Files are read in lexical order. If ``loop=True``, when the last frame
 is reached the source rewinds to the first.
 """
 
+import logging
 import time
 from pathlib import Path
 
 import cv2
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 _IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png"})
 
@@ -46,17 +49,24 @@ class FileReplaySource:
     def read(self) -> tuple[np.ndarray, float] | None:
         if not self._opened:
             raise RuntimeError("read() before open()")
-        if self._index >= len(self._files):
-            if not self._loop:
-                return None
-            self._index = 0
-        # Throttle to fps_target.
-        self._throttle()
-        frame = cv2.imread(str(self._files[self._index]))
-        self._index += 1
-        if frame is None:
-            return None
-        return frame, time.monotonic()
+        attempts = 0
+        max_attempts = len(self._files)
+        while attempts < max_attempts:
+            if self._index >= len(self._files):
+                if not self._loop:
+                    return None
+                self._index = 0
+            path = self._files[self._index]
+            self._throttle()
+            frame = cv2.imread(str(path))
+            self._index += 1
+            if frame is not None:
+                return frame, time.monotonic()
+            # Decode failure: log and try the next file in the same call so
+            # the pipeline does not mistake it for source exhaustion.
+            log.warning("Failed to decode replay frame %s; skipping", path)
+            attempts += 1
+        return None  # all remaining files were undecodable
 
     def _throttle(self) -> None:
         if self._fps_target <= 0:
