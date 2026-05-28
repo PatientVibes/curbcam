@@ -230,6 +230,12 @@ CREATE UNIQUE INDEX one_active_calibration
     ON calibrations(active) WHERE active = 1;
 ```
 
+**Connection mode:** WAL journaling is enabled at first-open
+(`PRAGMA journal_mode=WAL`). The detector thread writes events while the
+server thread reads history; WAL means readers never block the writer and
+vice versa. This is the default in modern Python but stated explicitly
+because the single-process / two-thread model depends on it.
+
 **Why store calibration history:** when speeds drift unexpectedly (camera
 moved, lens fogged, season changed), being able to say "events Tuesday used
 calibration #3, Wednesday onward used #4" is a real debugging lifeline.
@@ -247,6 +253,14 @@ Date-bucketed so a year of events doesn't dump 100k files in one folder.
 Rotation is a single background task driven by `max_events_per_day` and
 `max_total_disk_mb` config knobs — centralized, not scattered across
 scripts.
+
+**Annotation on saved JPEGs:** the full-frame `events/.../event_<id>.jpg`
+is saved with a minimal overlay (timestamp + measured speed + direction
+arrow) burned into a bottom strip — enough to be useful when viewed
+standalone, sparse enough not to obscure plate/vehicle detail. Thumbnails
+get the same overlay scaled. The live MJPEG stream and the alignment
+wizard's "show detection overlay" mode draw additional context
+(bounding boxes, crop region) that is **not** persisted to disk.
 
 ### 7.3 CSV
 
@@ -273,6 +287,7 @@ spreadsheet users.
 | `POST` | `/api/calibration/measure` | Save (points, distance, direction) |
 | `POST` | `/api/crop` | Save crop region from alignment wizard |
 | `POST/DELETE` | `/api/auth/login` `/api/auth/logout` | Session cookie |
+| `GET` | `/api/debug/stats` | Detector FPS, queue depths, uptime (JSON) |
 
 `/api/stream.mjpeg` accepts **either** a valid session cookie **or** a valid
 stream token query parameter (see §10). `/api/auth/login` is the only
@@ -285,6 +300,8 @@ fully-public endpoint. Everything else requires a session cookie.
   time. SSE updates the card list in place.
 - **Events (`/events`):** filterable history (date range, speed range,
   direction), server-side pagination, click-to-modal full image, CSV export.
+  All timestamps are stored UTC and rendered in the browser's local timezone
+  (client-side `toLocaleString`) — Pi `TZ` env var is for log files only.
 - **Settings (`/settings`):** Primary + Advanced tabs, Pydantic-validated
   server-side, HTMX inline errors.
 - **Calibration & Alignment (`/setup/calibrate`, `/setup/align`):** detailed
@@ -338,6 +355,10 @@ laptop, look, change config, restart, repeat" loop.
   `asyncio.Queue` per connected client. Runner finalizes an event →
   `events.publish(event)` → fan-out to all connected client queues.
   Disconnected clients drop their queue; no state leaks.
+- **Pluggability:** `events.publish(event)` is the single fanout point.
+  v0.2 alert subscribers (webhook, MQTT, ntfy) plug in here with the same
+  contract the SSE generator uses today. Spec'd as a design property so the
+  v0.2 work is additive, not invasive.
 
 ### 8.6 Settings → runner propagation
 
@@ -386,6 +407,14 @@ class Settings(BaseModel):
 ~30 fields total. Each gets a label + help text in `defaults.py` consumed by
 the settings UI — **single source of truth.**
 
+**Env-var overrides for sensitive fields.** Pydantic-settings supports
+nested env-var overrides natively (`CURBCAM_CAMERA__SOURCE` overrides
+`camera.source`). The install README and `docker-compose.yml` example
+demonstrate this for `camera.source` so users can keep RTSP credentials
+in `.env` (gitignored) rather than `curbcam.yaml`. The UI shows a
+"set via environment" indicator on any field overridden by env, and
+makes it read-only in the form.
+
 Calibration is **not** in YAML — it lives in SQLite (active row + history)
 because it is user-generated data, not configuration.
 
@@ -398,7 +427,10 @@ can put Caddy / Authelia / Tailscale in front.
 
 For embedding the live MJPEG in Home Assistant or similar, settings can mint
 per-purpose read-only stream tokens (`?token=...`) usable as a query-param
-auth on `/api/stream.mjpeg`. Tokens are revocable from settings.
+auth on `/api/stream.mjpeg`. Tokens are revocable from settings. The
+endpoint sets `Referrer-Policy: strict-origin-when-cross-origin` so the
+token cannot leak to third-party sites via `Referer` headers when the
+stream is embedded.
 
 ## 11. Install & Deployment
 
@@ -419,7 +451,12 @@ services:
       - /dev/dma_heap:/dev/dma_heap   # picamera2/libcamera
     environment:
       - TZ=America/Los_Angeles
+    env_file:
+      - .env                  # CURBCAM_CAMERA__SOURCE=rtsp://user:pw@... etc.
 ```
+
+A gitignored `.env` keeps RTSP credentials and any other secrets out of
+`curbcam.yaml`. The image otherwise needs no environment setup.
 
 ### 11.2 Image build
 
@@ -457,10 +494,17 @@ Three commands.
   `FileReplaySource` as the camera. End-to-end calibration wizard test:
   POST capture → POST measure → GET active calibration → finalize a track →
   assert event arrives via SSE with the right speed.
-- **No browser tests in MVP.** Playwright nice-to-have; adds CI weight.
-  Manual smoke per release for hobbyist scope.
+- **One Playwright smoke test** for the calibration wizard end-to-end:
+  open `/setup/calibrate` against a FileReplaySource container, capture a
+  reference frame, click two points at known canvas coordinates, submit a
+  known reference distance, assert the resulting `Calibration` row's
+  `mm_per_px_l2r` matches the hand-computed value within tolerance. This
+  single test catches the canvas-coordinate-transform bug class (§8.3)
+  that unit tests fundamentally cannot. Everything else stays manual-smoke
+  for MVP scope.
 - **CI:** GitHub Actions on `python: 3.12` / `arch: amd64`. Multi-arch
-  Docker build (`arm64` + `amd64`) on tag.
+  Docker build (`arm64` + `amd64`) on tag. Playwright runs in a
+  separate job against a Docker-Compose'd FileReplaySource container.
 
 ## 13. MVP Cut Line
 
@@ -490,6 +534,10 @@ Three commands.
 - Pre-flashed SD image via pi-gen
 - Time-lapse / video clips
 - Home Assistant custom integration (community can build on the stable API)
+- Day/night detection (gating low-light image saves, à la upstream's
+  `is_daytime` / `IM_SAVE_4AI_DAY_THRESH`) — defer until we know users
+  actually run into the disk-pressure-from-junk-frames problem; retention
+  caps already bound the worst case.
 
 ### 13.3 Non-goals (probably never)
 
@@ -508,8 +556,42 @@ Three commands.
   "may differ from upstream; report regressions."
 - **Single-process crash blast radius:** detector crash → web server down →
   Docker restarts. Brief gap. Acceptable; revisit only if it bites.
+- **Plaintext credentials in YAML.** `camera.source` for RTSP cameras
+  embeds `user:password@host`. Mitigated by the env-var override path
+  (§9) and the `.env` pattern in §11.1, both documented in the install
+  README. Risk remains if a user pastes credentials directly into
+  `curbcam.yaml`; UI shows a "this field contains credentials —
+  consider env var" hint on detection of `user:` in the URL.
 
-## 15. Open Questions
+## 15. Responsible Use & Privacy
+
+Speed cameras inherently capture imagery of people, vehicles, and license
+plates in public or semi-public spaces. The legal status of doing so varies
+by jurisdiction (GDPR in the EU, state-by-state in the US, etc.) and is not
+something this project can resolve for the user.
+
+The project's stance:
+
+- **The README's "Before you install" section must warn the operator to
+  check their local laws** before pointing the camera at a public road or
+  shared space. This is non-optional documentation.
+- **The default install is private-network-only** — no UPnP, no port
+  forwarding, no cloud sync, no public listing. The user has to actively
+  expose the service to make it externally accessible.
+- **No license-plate OCR ships in the MVP** (it's deferred — §13.2). If
+  added later, it ships disabled by default with a separate "I understand
+  the legal implications" consent step.
+- **No facial recognition. Ever.** Listed as a non-goal.
+- **All captured imagery stays on the user's device** unless they
+  explicitly opt into cloud sync (deferred, §13.2). Nothing phones home.
+- The `media/events/` directory is local-only by design; the user owns
+  the data and can delete it at any time. A "delete all events older
+  than N days" button lives in Settings.
+
+This section is also surfaced in the first-run wizard as a single
+acknowledgment screen before the user lands on the dashboard.
+
+## 16. Open Questions
 
 None at design time. Implementation plan will surface specifics
 (exact OpenCV background-subtractor choice, MJPEG fps cap defaults, etc.).
