@@ -8,6 +8,7 @@ Format examples:
     rtsp://user:pw@host:554/s
     file:./fixtures/sample
 """
+
 from pathlib import Path
 
 from curbcam.camera.base import Camera

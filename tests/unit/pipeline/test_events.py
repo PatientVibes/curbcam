@@ -51,6 +51,7 @@ async def test_publish_is_thread_safe_via_loop_call_soon_threadsafe() -> None:
     sub = bus.subscribe()
 
     import threading
+
     threading.Thread(
         target=lambda: bus.publish_threadsafe(EventEnvelope(kind="event", payload={}))
     ).start()
