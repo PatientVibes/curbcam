@@ -115,6 +115,8 @@ def test_detect_once_with_file_source(tmp_path: Path) -> None:
         app,
         [
             "detect",
+            "--config",
+            str(tmp_path / "curbcam.yaml"),
             "--data-dir",
             str(data_dir),
             "--media-dir",

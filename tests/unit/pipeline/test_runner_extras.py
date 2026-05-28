@@ -75,22 +75,27 @@ def test_run_in_background_thread_returns_live_thread(tmp_path: Path) -> None:
 
 
 @pytest.mark.timeout(15)
-def test_run_in_background_thread_idempotent_while_alive(tmp_path: Path) -> None:
-    """Calling run_in_background_thread() while the thread is alive returns the same thread."""
+def test_runner_run_in_background_thread_is_idempotent(tmp_path: Path) -> None:
+    """Calling run_in_background_thread twice must return the same thread,
+    not start a second one (idempotent for the MVP-2 server-restart pattern).
+    """
     run_dir = tmp_path / "run"
-    # Write enough frames that the thread is busy for a moment.
     run_dir.mkdir(parents=True, exist_ok=True)
     for i in range(5):
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.imwrite(str(run_dir / f"{i:04d}.jpg"), frame)
 
-    runner = _build_runner(tmp_path, run_dir=run_dir, loop=False)
+    # Loop=True so the thread never exhausts on its own — guarantees t1 is
+    # still alive when we make the second call.
+    runner = _build_runner(tmp_path, run_dir=run_dir, loop=True)
 
     t1 = runner.run_in_background_thread()
-    t2 = runner.run_in_background_thread()
-
-    assert t1 is t2
-    t1.join(timeout=10)
+    try:
+        t2 = runner.run_in_background_thread()
+        assert t1 is t2
+        assert t1.is_alive()
+    finally:
+        runner.stop(timeout=5.0)
 
 
 @pytest.mark.timeout(15)
