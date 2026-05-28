@@ -58,7 +58,10 @@ class RetentionSweeper:
                 )
                 to_delete = victims[: len(victims) - self._max_per_day]
                 for ev in to_delete:
-                    self._delete_files(ev)
+                    if not self._delete_files(ev):
+                        # Files survived (permission, read-only fs, etc.) —
+                        # keep the row so the file is not orphaned.
+                        continue
                     s.delete(ev)
                     deleted += 1
             s.commit()
@@ -71,12 +74,17 @@ class RetentionSweeper:
                 total = self._total_media_bytes()
                 if total <= self._max_disk_bytes:
                     break
-                oldest = (
-                    s.query(Event).order_by(Event.ts_utc.asc()).first()
-                )
+                oldest = s.query(Event).order_by(Event.ts_utc.asc()).first()
                 if oldest is None:
                     break
-                self._delete_files(oldest)
+                if not self._delete_files(oldest):
+                    # Cannot shrink disk further without orphaning rows;
+                    # abort so we don't infinite-loop on the same event.
+                    log.warning(
+                        "Disk-cap sweep aborted: cannot delete files for "
+                        "oldest event (still over cap)"
+                    )
+                    break
                 s.delete(oldest)
                 s.commit()
                 deleted += 1
@@ -89,7 +97,13 @@ class RetentionSweeper:
                 total += path.stat().st_size
         return total
 
-    def _delete_files(self, ev: Event) -> None:
+    def _delete_files(self, ev: Event) -> bool:
+        """Delete the event's image + thumbnail. Returns True if all targeted
+        files are gone after the call (already-absent counts as success);
+        False if any unlink raised OSError so the caller can leave the DB
+        row in place rather than orphaning files on disk.
+        """
+        ok = True
         for rel in (ev.image_path, ev.thumb_path):
             if not rel:
                 continue
@@ -97,4 +111,6 @@ class RetentionSweeper:
             try:
                 p.unlink(missing_ok=True)
             except OSError:
-                log.exception("Failed to delete %s", p)
+                log.exception("Failed to delete %s; leaving event row in place", p)
+                ok = False
+        return ok
