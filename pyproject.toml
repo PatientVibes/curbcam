@@ -48,6 +48,10 @@ addopts = "-ra --strict-markers --strict-config"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Alembic autogenerates files in its own style (trailing whitespace on the
+# `Revises:` line, Union[X, None] typing, etc.) and re-offends on every
+# new migration. Exclude the directory rather than fight the templates.
+exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "RUF"]
