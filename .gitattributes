@@ -1,0 +1,15 @@
+# Force LF line endings repo-wide. Without this, Windows clones with
+# `core.autocrlf=true` (the default on git-for-windows) rewrite every
+# file's line endings on checkout, then re-stage them as "changed" when
+# any unrelated edit lands — polluting every PR diff with whitespace
+# noise. Pinning eol=lf ensures the file on disk matches what's in git.
+* text=auto eol=lf
+
+# Binary files we don't want LF-normalised.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.sqlite binary
+*.db     binary
