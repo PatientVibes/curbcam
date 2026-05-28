@@ -44,20 +44,24 @@ def detect(
     store = ConfigStore(config)
     settings = store.load()
     if camera is not None:
-        settings = settings.model_copy(update={
-            "camera": settings.camera.model_copy(update={"source": camera}),
-        })
+        settings = settings.model_copy(
+            update={
+                "camera": settings.camera.model_copy(update={"source": camera}),
+            }
+        )
     if min_event_speed_kph is not None:
-        settings = settings.model_copy(update={
-            "server": settings.server.model_copy(
-                update={"min_event_speed_kph": min_event_speed_kph}
-            ),
-        })
+        settings = settings.model_copy(
+            update={
+                "server": settings.server.model_copy(
+                    update={"min_event_speed_kph": min_event_speed_kph}
+                ),
+            }
+        )
 
     _setup_logging(settings.server.log_level)
 
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
-    Base.metadata.create_all(db.engine)   # idempotent; alembic-managed in prod
+    Base.metadata.create_all(db.engine)  # idempotent; alembic-managed in prod
 
     cam = camera_from_source(
         settings.camera.source,
@@ -81,7 +85,11 @@ def detect(
 
     thread = runner.run_in_background_thread()
     try:
-        thread.join()
+        # Poll-join so KeyboardInterrupt is checked between iterations.
+        # `thread.join()` with no timeout blocks in a C call on Windows
+        # and the signal can be deferred indefinitely.
+        while thread.is_alive():
+            thread.join(timeout=0.5)
     except KeyboardInterrupt:
         runner.stop()
 
@@ -102,6 +110,9 @@ def calibrate(
         mm_per_px_l2r=mm_per_px_l2r,
         mm_per_px_r2l=mm_per_px_r2l,
         reference_distance_mm=reference_distance_mm,
+        # MVP-2 calibration wizard will populate this from the user's
+        # click coordinates on the live preview frame; CLI bootstrap
+        # has no points to record.
         reference_points_json="[]",
         notes=notes,
     )
@@ -120,9 +131,9 @@ def db_init(data_dir: Path = typer.Option(Path("./data"))) -> None:
     typer.echo(f"Schema initialised at {data_dir / 'curbcam.sqlite'}")
 
 
-def main() -> None:   # pragma: no cover
+def main() -> None:  # pragma: no cover
     app()
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()
