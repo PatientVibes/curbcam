@@ -431,7 +431,7 @@ def test_find_motion_detects_moved_rectangle() -> None:
     prev = _to_gray(frame_with_white_rect(x=100, y=200, w=40, h=40))
     curr = _to_gray(frame_with_white_rect(x=160, y=200, w=40, h=40))
 
-    detections = find_motion(prev, curr, min_area_px=500, crop=None)
+    detections = find_motion(prev, curr, min_area_px=500, crop=None, frame_ts=1.5)
 
     # The diff has two blobs (the vacated area and the newly-occupied area).
     # We expect 1 or 2 detections; what matters is that we get a sane bbox
@@ -446,7 +446,7 @@ def test_find_motion_returns_empty_when_no_change() -> None:
     prev = _to_gray(frame_with_white_rect(x=100, y=200, w=40, h=40))
     curr = prev.copy()
 
-    detections = find_motion(prev, curr, min_area_px=500, crop=None)
+    detections = find_motion(prev, curr, min_area_px=500, crop=None, frame_ts=1.5)
     assert detections == []
 
 
@@ -455,7 +455,7 @@ def test_find_motion_respects_min_area_px() -> None:
     prev = _to_gray(frame_with_white_rect(x=100, y=200, w=4, h=4))
     curr = _to_gray(frame_with_white_rect(x=101, y=200, w=4, h=4))
 
-    detections = find_motion(prev, curr, min_area_px=500, crop=None)
+    detections = find_motion(prev, curr, min_area_px=500, crop=None, frame_ts=1.5)
     assert detections == []
 
 
@@ -465,8 +465,18 @@ def test_find_motion_respects_crop() -> None:
     curr = _to_gray(frame_with_white_rect(x=160, y=200, w=40, h=40))
 
     crop = (300, 0, 640, 480)   # x_left, y_upper, x_right, y_lower
-    detections = find_motion(prev, curr, min_area_px=500, crop=crop)
+    detections = find_motion(prev, curr, min_area_px=500, crop=crop, frame_ts=1.5)
     assert detections == []
+
+
+def test_find_motion_uses_supplied_frame_ts() -> None:
+    """frame_ts must reflect capture time, not compute time."""
+    prev = _to_gray(frame_with_white_rect(x=100, y=200, w=40, h=40))
+    curr = _to_gray(frame_with_white_rect(x=160, y=200, w=40, h=40))
+
+    detections = find_motion(prev, curr, min_area_px=500, crop=None, frame_ts=12345.678)
+    assert detections, "expected at least one detection"
+    assert all(d.frame_ts == 12345.678 for d in detections)
 ```
 
 - [ ] **Step 3: Run test to verify it fails**
@@ -489,10 +499,13 @@ in source-image coordinates.
 
 Returned bounding boxes and centroids are always in SOURCE coordinates
 (crop is applied internally and translated back).
+
+``frame_ts`` MUST be the capture timestamp of ``curr_gray`` (typically
+the monotonic seconds returned by ``camera.read()``). It is propagated
+verbatim into every returned Detection so speed calculations downstream
+use real elapsed wall-clock between captures, not detector compute time.
 """
 from __future__ import annotations
-
-import time
 
 import cv2
 import numpy as np
@@ -509,6 +522,7 @@ def find_motion(
     *,
     min_area_px: int,
     crop: BBox | None,
+    frame_ts: float,
 ) -> list[Detection]:
     """Return Detections for connected motion blobs above ``min_area_px``."""
     if crop is not None:
@@ -527,7 +541,6 @@ def find_motion(
 
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    ts = time.monotonic()
     out: list[Detection] = []
     for c in contours:
         area = int(cv2.contourArea(c))
@@ -542,7 +555,7 @@ def find_motion(
                 bbox=(src_x, src_y, w, h),
                 centroid=(cx, cy),
                 area_px=area,
-                frame_ts=ts,
+                frame_ts=frame_ts,
             )
         )
     return out
@@ -554,7 +567,7 @@ def find_motion(
 uv run pytest tests/unit/detector/test_motion.py -v
 ```
 
-Expected: 4 passed.
+Expected: 5 passed.
 
 - [ ] **Step 6: Commit**
 
@@ -1434,6 +1447,48 @@ def test_wal_journaling_is_enabled(tmp_path: Path) -> None:
     with db.engine.connect() as conn:
         mode = conn.exec_driver_sql("PRAGMA journal_mode").scalar()
         assert mode == "wal"
+
+
+def test_wal_journaling_persists_across_connections(tmp_path: Path) -> None:
+    """A fresh Database wrapper on the same file must still see WAL active."""
+    path = tmp_path / "wal-persist.sqlite"
+    Database.for_sqlite_path(path)   # first connect sets PRAGMA
+    db = Database.for_sqlite_path(path)
+    with db.engine.connect() as conn:
+        mode = conn.exec_driver_sql("PRAGMA journal_mode").scalar()
+        assert mode == "wal"
+
+
+def test_unique_active_calibration_constraint_enforced_at_db_layer(
+    tmp_path: Path,
+) -> None:
+    """Defense in depth: even bypassing the repo, the partial unique index fires."""
+    import datetime as dt
+    import sqlalchemy.exc as sa_exc
+
+    db = Database.for_sqlite_path(tmp_path / "constraint.sqlite")
+    Base.metadata.create_all(db.engine)
+    with db.session() as s:
+        s.add(Calibration(
+            created_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
+            mm_per_px_l2r=40.0, mm_per_px_r2l=40.0,
+            reference_distance_mm=4000.0, reference_points_json="[]",
+            active=True, notes=None,
+        ))
+        s.commit()
+    with db.session() as s:
+        s.add(Calibration(
+            created_utc=dt.datetime(2026, 5, 28, 12, 1, 0),
+            mm_per_px_l2r=41.0, mm_per_px_r2l=41.0,
+            reference_distance_mm=4100.0, reference_points_json="[]",
+            active=True, notes=None,
+        ))
+        with pytest.raises(sa_exc.IntegrityError):
+            s.commit()
+
+
+# Imports for the test above — kept here to keep the simple test above untouched.
+import pytest  # noqa: E402
 ```
 
 - [ ] **Step 11: Create `tests/unit/storage/__init__.py` and run tests**
@@ -1446,7 +1501,7 @@ def test_wal_journaling_is_enabled(tmp_path: Path) -> None:
 uv run pytest tests/unit/storage/ -v
 ```
 
-Expected: 2 passed.
+Expected: 4 passed.
 
 - [ ] **Step 12: Commit**
 
@@ -1780,7 +1835,10 @@ def _annotate(
     strip_h = 30
     # Dark strip across the bottom for legibility.
     cv2.rectangle(out, (0, h - strip_h), (w, h), (0, 0, 0), thickness=-1)
-    arrow = "→" if direction == "L2R" else "←"
+    # ASCII direction marker: cv2.putText with the default Hershey font
+    # cannot render Unicode arrows (renders as "?"). ">>" and "<<" are
+    # visually clear and font-safe everywhere OpenCV runs.
+    arrow = ">>" if direction == "L2R" else "<<"
     text = f"{ts_utc.strftime('%Y-%m-%d %H:%M:%S')}  {speed_kph:5.1f} kph  {arrow}"
     cv2.putText(
         out,
@@ -1856,6 +1914,16 @@ class Camera(Protocol):
 
     @property
     def fps_target(self) -> float: ...
+
+    @property
+    def is_persistent(self) -> bool:
+        """True for sources that should be reopened on exhaustion (live cameras).
+
+        False for sources that legitimately end (e.g. a non-looping
+        FileReplaySource). Used by PipelineRunner._loop_with_reconnect to
+        decide whether to retry or terminate after read() returns None.
+        """
+        ...
 ```
 
 - [ ] **Step 3: Write the failing test**
@@ -2011,6 +2079,11 @@ class FileReplaySource:
     @property
     def fps_target(self) -> float:
         return self._fps_target
+
+    @property
+    def is_persistent(self) -> bool:
+        """A looping replay is persistent; a one-shot replay is not."""
+        return self._loop
 ```
 
 - [ ] **Step 6: Run test to verify it passes**
@@ -2100,6 +2173,10 @@ class UsbSource:
     @property
     def fps_target(self) -> float:
         return self._fps_target
+
+    @property
+    def is_persistent(self) -> bool:
+        return True
 ```
 
 - [ ] **Step 2: Write `src/curbcam/camera/rtsp_source.py`**
@@ -2173,6 +2250,10 @@ class RtspSource:
     @property
     def fps_target(self) -> float:
         return self._fps_target
+
+    @property
+    def is_persistent(self) -> bool:
+        return True
 ```
 
 - [ ] **Step 3: Write a no-hardware sanity test for USB**
@@ -2343,6 +2424,10 @@ class Picamera2Source:
     @property
     def fps_target(self) -> float:
         return self._fps_target
+
+    @property
+    def is_persistent(self) -> bool:
+        return True
 ```
 
 - [ ] **Step 2: Write the failing factory test**
@@ -2661,12 +2746,20 @@ import cv2
 import numpy as np
 
 
-def write_synthetic_run(dir_: Path, *, frames: int = 10, step_px: int = 40) -> None:
+def write_synthetic_run(
+    dir_: Path,
+    *,
+    frames: int = 10,
+    step_px: int = 40,
+    direction: str = "L2R",
+) -> None:
     dir_.mkdir(parents=True, exist_ok=True)
     width, height = 640, 480
+    start = 100 if direction == "L2R" else width - 140
+    sign = 1 if direction == "L2R" else -1
     for i in range(frames):
         img = np.zeros((height, width, 3), dtype=np.uint8)
-        x = 100 + i * step_px
+        x = start + sign * i * step_px
         cv2.rectangle(img, (x, 200), (x + 40, 240), (255, 255, 255), thickness=-1)
         cv2.imwrite(str(dir_ / f"{i:04d}.jpg"), img)
 ```
@@ -2747,6 +2840,84 @@ def test_runner_processes_synthetic_run_and_writes_an_event(tmp_path: Path) -> N
     # Assert: media files were written.
     assert (media_root / e.image_path).exists()
     assert (media_root / e.thumb_path).exists()
+
+
+@pytest.mark.timeout(30)
+def test_runner_processes_r2l_run_with_r2l_calibration(tmp_path: Path) -> None:
+    """End-to-end check that mm_per_px_r2l is the value actually used for R2L tracks."""
+    run_dir = tmp_path / "run"
+    write_synthetic_run(run_dir, frames=10, step_px=40, direction="R2L")
+
+    media_root = tmp_path / "media"
+    media_root.mkdir()
+    db = Database.for_sqlite_path(tmp_path / "events.sqlite")
+    Base.metadata.create_all(db.engine)
+
+    cal_repo = CalibrationRepo(db)
+    # L2R cal is intentionally junk; if pipeline confuses directions the
+    # produced speed will be wildly wrong.
+    cal_repo.save_new_active(
+        mm_per_px_l2r=999.0, mm_per_px_r2l=10.0,
+        reference_distance_mm=400.0, reference_points_json="[]",
+    )
+
+    settings = Settings(
+        camera=CameraSettings(source="file:dummy", resolution=(640, 480), fps_target=60.0),
+        detector=DetectorSettings(min_area_px=400, min_track_frames=3, max_dist_px=80),
+        retention=RetentionSettings(),
+        server=ServerSettings(min_event_speed_kph=0.0),
+    )
+
+    camera = FileReplaySource(run_dir, fps_target=60.0, loop=False)
+    runner = PipelineRunner(
+        camera=camera, db=db,
+        event_repo=EventRepo(db), calibration_repo=cal_repo,
+        media=MediaWriter(media_root), bus=EventBus(),
+        settings=settings,
+    )
+    runner.run_until_camera_exhausted()
+
+    with db.session() as s:
+        from curbcam.storage.models import Event
+        events = s.query(Event).all()
+        assert len(events) == 1
+        e = events[0]
+        assert e.direction == "R2L"
+        # With mm_per_px_r2l=10.0, sane speed should be a small two-digit kph,
+        # nowhere near the 999-multiplier l2r calibration would produce.
+        assert 0 < e.speed_kph < 500
+
+
+@pytest.mark.timeout(30)
+def test_runner_skips_persistence_when_no_active_calibration(tmp_path: Path) -> None:
+    """No crash, no event row when a track finalises without a calibration."""
+    run_dir = tmp_path / "run"
+    write_synthetic_run(run_dir, frames=10, step_px=40)
+
+    media_root = tmp_path / "media"
+    media_root.mkdir()
+    db = Database.for_sqlite_path(tmp_path / "events.sqlite")
+    Base.metadata.create_all(db.engine)
+
+    settings = Settings(
+        camera=CameraSettings(source="file:dummy", resolution=(640, 480), fps_target=60.0),
+        detector=DetectorSettings(min_area_px=400, min_track_frames=3, max_dist_px=80),
+        retention=RetentionSettings(),
+        server=ServerSettings(min_event_speed_kph=0.0),
+    )
+
+    camera = FileReplaySource(run_dir, fps_target=60.0, loop=False)
+    runner = PipelineRunner(
+        camera=camera, db=db,
+        event_repo=EventRepo(db), calibration_repo=CalibrationRepo(db),
+        media=MediaWriter(media_root), bus=EventBus(),
+        settings=settings,
+    )
+    runner.run_until_camera_exhausted()   # must not raise
+
+    with db.session() as s:
+        from curbcam.storage.models import Event
+        assert s.query(Event).count() == 0
 ```
 
 - [ ] **Step 3: Run test to verify it fails**
@@ -2831,11 +3002,11 @@ class PipelineRunner:
                 got = self._camera.read()
                 if got is None:
                     break
-                frame_bgr, _ts = got
+                frame_bgr, ts = got
                 last_full_frame = frame_bgr
                 curr_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
                 if prev_gray is not None:
-                    self._process_frame(prev_gray, curr_gray, frame_bgr)
+                    self._process_frame(prev_gray, curr_gray, frame_bgr, frame_ts=ts)
                 prev_gray = curr_gray
             # Source exhausted — flush any in-flight track.
             if last_full_frame is not None:
@@ -2861,26 +3032,38 @@ class PipelineRunner:
             self._thread = None
 
     def _loop_with_reconnect(self) -> None:
+        """Reconnect loop for persistent sources; one-shot for finite sources.
+
+        A live camera (USB, RTSP, picamera2, looping replay) has
+        ``is_persistent = True``: when read() returns None we treat it
+        as a transient failure, sleep briefly, and reopen. A finite
+        source (non-looping FileReplaySource) has
+        ``is_persistent = False``: when run_until_camera_exhausted
+        returns normally, we exit the loop. Either way, exceptions are
+        logged and retried for persistent sources only.
+        """
         while not self._stop.is_set():
             try:
                 self.run_until_camera_exhausted()
             except Exception:
-                log.exception("Pipeline crashed; retrying in 2s")
+                log.exception("Pipeline crashed")
+                if not self._camera.is_persistent:
+                    return
                 time.sleep(2.0)
-            else:
-                # For looping sources (FileReplaySource(loop=True)) this is
-                # never reached. For real cameras returning None on read,
-                # we sleep briefly then reopen.
-                time.sleep(0.5)
+                continue
+            if not self._camera.is_persistent:
+                return
+            time.sleep(0.5)
 
     # -- internals --
 
-    def _process_frame(self, prev_gray, curr_gray, frame_bgr) -> None:
+    def _process_frame(self, prev_gray, curr_gray, frame_bgr, *, frame_ts: float) -> None:
         detections = find_motion(
             prev_gray,
             curr_gray,
             min_area_px=self._settings.detector.min_area_px,
             crop=self._settings.detector.crop,
+            frame_ts=frame_ts,
         )
         finalised = self._tracker.update(detections)
         for track in finalised:
@@ -3200,13 +3383,26 @@ Expected: 1 passed.
 
 - [ ] **Step 5: Manual smoke against a real synthetic run**
 
+Write a tiny helper script (more robust than `python -c` with multi-line
+strings, especially on PowerShell):
+
+```python
+# scripts/make_sample_run.py
+from pathlib import Path
+
+from tests.integration.fixtures.synthetic_run import write_synthetic_run
+
+write_synthetic_run(Path("./fixtures/sample_run"), frames=12, step_px=40)
+print("Wrote 12 sample frames to ./fixtures/sample_run")
+```
+
+Then run it:
+
 ```bash
 cd D:/curbcam
-uv run python -c "
-from pathlib import Path
-from tests.integration.fixtures.synthetic_run import write_synthetic_run
-write_synthetic_run(Path('./fixtures/sample_run'), frames=12, step_px=40)
-"
+mkdir -p scripts
+# (paste the script above into scripts/make_sample_run.py)
+uv run python scripts/make_sample_run.py
 uv run curbcam calibrate --mm-per-px-l2r 10 --mm-per-px-r2l 10 --reference-distance-mm 400
 uv run curbcam detect --camera file:./fixtures/sample_run --min-event-speed-kph 0 --once
 ```
