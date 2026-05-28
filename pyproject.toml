@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
     "ruff>=0.6",
     "mypy>=1.10",
     "types-PyYAML>=6.0",
@@ -44,6 +45,7 @@ packages = ["src/curbcam"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers --strict-config"
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100
@@ -81,3 +83,8 @@ environments = [
 name = "python-prctl"
 version = "1.8.1"
 requires-dist = []
+
+[dependency-groups]
+dev = [
+    "pytest-timeout>=2.3",
+]
