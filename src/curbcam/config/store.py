@@ -12,6 +12,7 @@ Behaviour:
   those, sidestepping the problem.
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -80,9 +81,19 @@ class ConfigStore:
     def load(self) -> Settings:
         if not self._path.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            default = Settings()
-            self._write_yaml(default.model_dump(mode="json"))
-            return default
+            # Write pure defaults WITHOUT env overlay so first-run does not
+            # leak env-only credentials (e.g. CURBCAM_CAMERA__SOURCE=rtsp://
+            # user:pw@...) into the on-disk YAML. Restore env afterwards and
+            # return an env-overlaid Settings for the caller.
+            env_snapshot = {k: v for k, v in os.environ.items() if k.startswith("CURBCAM_")}
+            try:
+                for k in env_snapshot:
+                    del os.environ[k]
+                defaults = Settings()
+            finally:
+                os.environ.update(env_snapshot)
+            self._write_yaml(defaults.model_dump(mode="json"))
+            return Settings()
 
         with self._path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}

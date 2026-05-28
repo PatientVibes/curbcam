@@ -63,3 +63,30 @@ def test_env_var_overrides_yaml_when_file_exists(
         "env var must override the persisted YAML value on subsequent loads, "
         "not just on first-run when the file is missing"
     )
+
+
+def test_load_does_not_persist_env_overrides_on_first_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """First-run YAML write must not leak env-only credentials to disk.
+
+    The returned Settings should still reflect the env overlay (so the
+    runner uses the correct camera source), but the YAML file itself
+    contains only true defaults — env-vars stay out of the persisted
+    config.
+    """
+    monkeypatch.setenv("CURBCAM_CAMERA__SOURCE", "rtsp://user:pw@cam.local/stream")
+    path = tmp_path / "curbcam.yaml"
+    store = ConfigStore(path)
+
+    s = store.load()
+    # Returned settings DO have the env value applied (runtime contract).
+    assert s.camera.source == "rtsp://user:pw@cam.local/stream"
+
+    # But the YAML on disk holds only the default, not the credentials.
+    monkeypatch.delenv("CURBCAM_CAMERA__SOURCE")
+    on_disk = ConfigStore(path).load()
+    assert on_disk.camera.source == "picamera2:0", (
+        "first-run write must not persist env-overlaid values; otherwise "
+        "RTSP credentials passed via env vars leak into the on-disk YAML"
+    )
