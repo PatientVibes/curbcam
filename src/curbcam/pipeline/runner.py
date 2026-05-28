@@ -20,13 +20,15 @@ import cv2
 
 from curbcam.camera.base import Camera
 from curbcam.config.schema import Settings
+from curbcam.detector.calibration import Calibration as CalDC
 from curbcam.detector.calibration import speed_from_track
 from curbcam.detector.motion import find_motion
 from curbcam.detector.tracker import Tracker
 from curbcam.pipeline.events import EventBus, EventEnvelope
 from curbcam.storage.db import Database
 from curbcam.storage.media import MediaWriter
-from curbcam.storage.repositories import CalibrationRepo, EventRepo
+from curbcam.storage.models import Event
+from curbcam.storage.repositories import CalibrationRepo
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +39,6 @@ class PipelineRunner:
         *,
         camera: Camera,
         db: Database,
-        event_repo: EventRepo,
         calibration_repo: CalibrationRepo,
         media: MediaWriter,
         bus: EventBus,
@@ -45,7 +46,6 @@ class PipelineRunner:
     ) -> None:
         self._camera = camera
         self._db = db
-        self._events = event_repo
         self._calibrations = calibration_repo
         self._media = media
         self._bus = bus
@@ -112,6 +112,14 @@ class PipelineRunner:
                 self.run_until_camera_exhausted()
             except Exception:
                 log.exception("Pipeline crashed")
+                # Drop any in-flight tracks from the crashed run — their
+                # frame_ts values are stale, and matching new detections
+                # against them would produce garbage speed readings on the
+                # very first frame after reconnect.
+                self._tracker = Tracker(
+                    max_dist_px=self._settings.detector.max_dist_px,
+                    min_track_frames=self._settings.detector.min_track_frames,
+                )
                 if not self._camera.is_persistent:
                     return
                 time.sleep(2.0)
@@ -139,9 +147,9 @@ class PipelineRunner:
         if cal is None:
             log.info("Track finalised but no active calibration; skipping")
             return
-        from curbcam.detector.calibration import Calibration as CalDC
-        cal_dc = CalDC(mm_per_px_l2r=float(cal.mm_per_px_l2r),
-                       mm_per_px_r2l=float(cal.mm_per_px_r2l))
+        cal_dc = CalDC(
+            mm_per_px_l2r=float(cal.mm_per_px_l2r), mm_per_px_r2l=float(cal.mm_per_px_r2l)
+        )
         speed = speed_from_track(track, cal_dc)
         if speed is None:
             return
@@ -151,10 +159,11 @@ class PipelineRunner:
 
         ts_utc = dt.datetime.now(dt.UTC).replace(tzinfo=None)
         with self._db.session() as s:
-            from curbcam.storage.models import Event
             ev = Event(
                 ts_utc=ts_utc,
                 speed_kph=float(speed),
+                # Tracker._finalise always sets direction; `or` is purely defensive
+                # against an unexpected None from a future refactor.
                 direction=track.direction or "L2R",
                 frame_count=len(track.detections),
                 track_len_px=int(

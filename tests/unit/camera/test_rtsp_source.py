@@ -2,6 +2,7 @@
 
 Set CURBCAM_TEST_RTSP_URL=rtsp://... to enable.
 """
+
 import os
 
 import pytest

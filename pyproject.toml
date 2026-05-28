@@ -85,6 +85,4 @@ version = "1.8.1"
 requires-dist = []
 
 [dependency-groups]
-dev = [
-    "pytest-timeout>=2.3",
-]
+dev = []
