@@ -33,6 +33,7 @@ class _LiveTrack:
 
 
 def _distance(a: tuple[int, int], b: tuple[int, int]) -> float:
+    # math.sqrt over ** 0.5 because mypy strict types int ** 0.5 as Any
     dx = a[0] - b[0]
     dy = a[1] - b[1]
     return math.sqrt(dx * dx + dy * dy)
