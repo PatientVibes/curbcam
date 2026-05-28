@@ -8,13 +8,14 @@ Used by:
 Files are read in lexical order. If ``loop=True``, when the last frame
 is reached the source rewinds to the first.
 """
+
 import time
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-_IMAGE_GLOBS = ("*.jpg", "*.jpeg", "*.png")
+_IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png"})
 
 
 class FileReplaySource:
@@ -31,10 +32,7 @@ class FileReplaySource:
     def open(self) -> None:
         if self._opened:
             return
-        files: list[Path] = []
-        for pattern in _IMAGE_GLOBS:
-            files.extend(self._dir.glob(pattern))
-        self._files = sorted(files)
+        self._files = sorted(p for p in self._dir.iterdir() if p.suffix.lower() in _IMAGE_SUFFIXES)
         if not self._files:
             raise FileNotFoundError(f"No image files in {self._dir}")
         # Probe shape from first file.
@@ -73,6 +71,8 @@ class FileReplaySource:
 
     def close(self) -> None:
         self._opened = False
+        self._index = 0
+        self._last_emit = None
 
     @property
     def resolution(self) -> tuple[int, int]:

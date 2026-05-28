@@ -2,6 +2,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from curbcam.camera.file_replay import FileReplaySource
 
@@ -45,5 +46,47 @@ def test_file_replay_loops_when_loop_true(tmp_path: Path) -> None:
     try:
         got = [cam.read() for _ in range(5)]
         assert all(f is not None for f in got)
+    finally:
+        cam.close()
+
+
+def test_file_replay_read_before_open_raises(tmp_path: Path) -> None:
+    cam = FileReplaySource(tmp_path, fps_target=30.0)
+    with pytest.raises(RuntimeError):
+        cam.read()
+
+
+def test_file_replay_raises_on_empty_directory(tmp_path: Path) -> None:
+    cam = FileReplaySource(tmp_path, fps_target=30.0)
+    with pytest.raises(FileNotFoundError):
+        cam.open()
+
+
+def test_file_replay_close_resets_state_for_rewind(tmp_path: Path) -> None:
+    """After close() and re-open(), reading starts from the first frame again."""
+    _write_jpgs(tmp_path, count=3)
+    cam = FileReplaySource(tmp_path, fps_target=30.0)
+    cam.open()
+    first = cam.read()
+    cam.read()
+    cam.read()
+    cam.close()
+    cam.open()
+    first_after_rewind = cam.read()
+    cam.close()
+    assert first is not None and first_after_rewind is not None
+    # Same first frame seen on both opens — content identical.
+    np.testing.assert_array_equal(first[0], first_after_rewind[0])
+
+
+def test_file_replay_picks_up_uppercase_extensions(tmp_path: Path) -> None:
+    """Case-insensitive suffix matching for portability on Linux filesystems."""
+    img = np.full((10, 10, 3), 100, dtype=np.uint8)
+    cv2.imwrite(str(tmp_path / "frame.JPG"), img)
+    cv2.imwrite(str(tmp_path / "frame.PNG"), img)
+    cam = FileReplaySource(tmp_path, fps_target=30.0)
+    cam.open()
+    try:
+        assert cam.read() is not None  # at least one frame discovered
     finally:
         cam.close()

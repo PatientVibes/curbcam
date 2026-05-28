@@ -1,4 +1,5 @@
 """The Camera Protocol that every frame source implements."""
+
 from typing import Protocol
 
 import numpy as np
