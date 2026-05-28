@@ -13,10 +13,64 @@ Behaviour:
 """
 
 from pathlib import Path
+from typing import Any
 
 import yaml
+from pydantic_settings import PydanticBaseSettingsSource
 
 from curbcam.config.schema import Settings
+
+
+class _DictSettingsSource(PydanticBaseSettingsSource):
+    """A pydantic-settings source backed by a plain dict.
+
+    Used to feed YAML-loaded values into the settings priority chain
+    at a position *below* ``EnvSettingsSource``, so environment variables
+    always override persisted YAML values.
+    """
+
+    def __init__(self, settings_cls: type[Settings], data: dict[str, Any]) -> None:
+        super().__init__(settings_cls)
+        self._data = data
+
+    def get_field_value(
+        self, field: Any, field_name: str
+    ) -> tuple[Any, str, bool]:  # pragma: no cover
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        return self._data
+
+
+def _settings_from_yaml_dict(data: dict[str, Any]) -> Settings:
+    """Construct a Settings instance with correct source priority.
+
+    Priority (highest → lowest):
+        1. Environment variables  (EnvSettingsSource)
+        2. Persisted YAML dict    (_DictSettingsSource)
+        3. Field defaults         (implicit in model)
+
+    This ensures ``CURBCAM_*`` env vars always win over whatever is
+    stored in the YAML file.
+    """
+    yaml_source = _DictSettingsSource(Settings, data)
+
+    class _SettingsWithYaml(Settings):
+        @classmethod
+        def settings_customise_sources(  # type: ignore[override]
+            cls,
+            settings_cls: type[Settings],
+            init_settings: PydanticBaseSettingsSource,
+            env_settings: PydanticBaseSettingsSource,
+            dotenv_settings: PydanticBaseSettingsSource,
+            file_secret_settings: PydanticBaseSettingsSource,
+        ) -> tuple[PydanticBaseSettingsSource, ...]:
+            # Drop init_settings so caller kwargs cannot sneak in.
+            return env_settings, dotenv_settings, file_secret_settings, yaml_source
+
+    instance = _SettingsWithYaml()
+    # Return a plain Settings so callers never see the subclass.
+    return Settings.model_validate(instance.model_dump())
 
 
 class ConfigStore:
@@ -33,11 +87,11 @@ class ConfigStore:
         with self._path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
-        return Settings.model_validate(data)
+        return _settings_from_yaml_dict(data)
 
     def save(self, settings: Settings) -> None:
         self._write_yaml(settings.model_dump(mode="json"))
 
-    def _write_yaml(self, data: dict) -> None:  # type: ignore[type-arg]
+    def _write_yaml(self, data: dict[str, Any]) -> None:
         with self._path.open("w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False, indent=2)
