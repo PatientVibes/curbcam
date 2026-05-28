@@ -12,6 +12,8 @@ def test_detection_is_frozen() -> None:
 
 
 def test_tracked_object_speed_is_optional() -> None:
-    obj = TrackedObject(id="a1b2", detections=[], direction=None, speed_kph=None)
+    """Constructing with only `id` exercises the default wiring."""
+    obj = TrackedObject(id="a1b2")
     assert obj.speed_kph is None
     assert obj.direction is None
+    assert obj.detections == []

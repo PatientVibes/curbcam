@@ -1,11 +1,9 @@
 """Public dataclasses for the detector module."""
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Literal
 
-
-Direction = Literal["L2R", "R2L"]
+type Direction = Literal["L2R", "R2L"]
 
 
 @dataclass(frozen=True, slots=True)
