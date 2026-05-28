@@ -1,5 +1,6 @@
 import pytest
 
+from curbcam.config.defaults import FIELD_LABELS
 from curbcam.config.schema import (
     DetectorSettings,
     RetentionSettings,
@@ -40,3 +41,14 @@ def test_retention_caps_must_be_positive() -> None:
 def test_min_event_speed_must_be_non_negative() -> None:
     with pytest.raises(ValueError):
         ServerSettings(min_event_speed_kph=-1.0)
+
+
+def test_field_labels_is_non_empty_dict() -> None:
+    """FIELD_LABELS should be a non-empty dict with string keys and 2-tuple values."""
+    assert isinstance(FIELD_LABELS, dict)
+    assert len(FIELD_LABELS) > 0
+    for key, value in FIELD_LABELS.items():
+        assert isinstance(key, str)
+        label, help_text = value
+        assert isinstance(label, str)
+        assert isinstance(help_text, str)
