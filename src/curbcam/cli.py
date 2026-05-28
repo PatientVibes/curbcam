@@ -15,9 +15,8 @@ from curbcam.camera.factory import camera_from_source
 from curbcam.config.store import ConfigStore
 from curbcam.pipeline.events import EventBus
 from curbcam.pipeline.runner import PipelineRunner
-from curbcam.storage.db import Database
+from curbcam.storage.db import Database, ensure_schema
 from curbcam.storage.media import MediaWriter
-from curbcam.storage.models import Base
 from curbcam.storage.repositories import CalibrationRepo
 
 app = typer.Typer(help="curbcam — speed camera CLI", no_args_is_help=True)
@@ -61,7 +60,7 @@ def detect(
     _setup_logging(settings.server.log_level)
 
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
-    Base.metadata.create_all(db.engine)  # idempotent; alembic-managed in prod
+    ensure_schema(db)
 
     cam = camera_from_source(
         settings.camera.source,
@@ -104,7 +103,7 @@ def calibrate(
 ) -> None:
     """Write a new active calibration directly (CLI bootstrap before MVP-2 UI)."""
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
-    Base.metadata.create_all(db.engine)
+    ensure_schema(db)
     repo = CalibrationRepo(db)
     cal = repo.save_new_active(
         mm_per_px_l2r=mm_per_px_l2r,
@@ -127,7 +126,7 @@ app.add_typer(db_app, name="db")
 def db_init(data_dir: Path = typer.Option(Path("./data"))) -> None:
     """Create the SQLite schema (idempotent)."""
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
-    Base.metadata.create_all(db.engine)
+    ensure_schema(db)
     typer.echo(f"Schema initialised at {data_dir / 'curbcam.sqlite'}")
 
 
