@@ -148,11 +148,16 @@ COPY pyproject.toml README.md uv.lock ./
 COPY src ./src
 # Build the (pure-Python) curbcam wheel.
 RUN uv build --wheel --out-dir /wheels
-# Resolve the full runtime dependency closure for Python 3.13, then strip the
-# two C-extension packages that MUST instead come from apt (numpy, opencv) so
-# they share the apt libcamera/picamera2 numpy ABI (spec §4.3). opencv-python-
-# headless's only dependency is numpy, so removing both lines leaves no orphans.
-RUN uv pip compile pyproject.toml --python-version 3.13 -o /wheels/requirements.txt \
+# Export the LOCKED runtime dependency closure from uv.lock (reproducible —
+# pinned to the same versions developers/CI use, NOT re-resolved from
+# pyproject's loose constraints), then strip the two C-extension packages that
+# MUST instead come from apt (numpy, opencv) so they share the apt
+# libcamera/picamera2 numpy ABI (spec §4.3). --no-hashes keeps each entry a
+# single `pkg==ver` line so the sed strip is safe; --no-emit-project excludes
+# curbcam itself (installed separately as the wheel, --no-deps); --no-dev drops
+# dev tooling. opencv-python-headless's only dependency is numpy, so removing
+# both lines leaves no orphaned transitive deps.
+RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /wheels/requirements.txt \
     && sed -i -E '/^(numpy|opencv-python-headless)([=<>!~; ]|$)/d' /wheels/requirements.txt
 
 # ---- runtime: debian:trixie (distro python3 == 3.13) + RPi libcamera stack ----
@@ -492,9 +497,11 @@ git commit -m "docs: Pi Camera Module Docker image — README + un-defer specs"
   (§4.5).** If it fails in CI, the dependency model is wrong — do not delete or weaken the assertion to
   make the build pass; fix the model (most likely the `sed` strip in `Dockerfile.picamera`, an extra
   apt package, or sourcing another package from apt).
-- **uv reads `pyproject.toml` deps for `uv pip compile`** — when a curbcam dependency is added/removed
-  later, the stripped requirements regenerate automatically; only revisit the `sed` line if a *new*
-  numpy-linked C-extension dependency is introduced.
+- **`uv export` derives the deps from `uv.lock`** — when a curbcam dependency is added/removed later
+  (and the lock is updated), the stripped requirements regenerate automatically; only revisit the `sed`
+  line if a *new* numpy-linked C-extension dependency is introduced. If `uv export`'s flag names differ
+  in the installed uv version, the equivalent is "export the locked non-dev, non-project deps to a
+  requirements file without hashes."
 - **GHCR image name is lowercase** — `ghcr.io/patientvibes/curbcam`.
 - **Camera correctness is unprovable in CI** (no Pi, emulated arch). The mandatory manual Pi
   verification in spec §9 is the real acceptance test — surface it in the PR description.

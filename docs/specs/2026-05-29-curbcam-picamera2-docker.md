@@ -88,8 +88,10 @@ these from PyPI into the same interpreter re-introduces the `numpy.ndarray size 
 
 ### 4.4 Reused, unchanged from MVP-3
 
-Builder stage builds the wheel exactly as the main `Dockerfile` does (curbcam is a pure-Python wheel,
-so the builder's Python minor is irrelevant). Runtime copies `alembic.ini` + `migrations/` +
+Builder stage builds the same pure-Python curbcam wheel as the main image (curbcam has no compiled
+extensions, so the wheel is interpreter-agnostic) — though on a `debian:trixie-slim` + `uv`-binary
+builder rather than the main image's `python:3.12-slim-bookworm`, and it additionally exports the
+locked runtime deps (minus numpy/opencv) from `uv.lock` for the §4.3 install. Runtime copies `alembic.ini` + `migrations/` +
 `docker-entrypoint.sh`; same `db upgrade` → `serve --port 8080 …` entrypoint, same `HEALTHCHECK`, runs
 as root, `tini` as PID 1. The config default camera source is already `picamera2:0`, so a fresh install
 works on a Pi cam with no extra configuration.
