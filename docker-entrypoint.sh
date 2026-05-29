@@ -7,6 +7,7 @@ set -e
 
 curbcam db upgrade --data-dir /data
 
+# --port 8080 overrides serve's CLI default of 8000 (matches EXPOSE + HEALTHCHECK).
 exec curbcam serve \
     --host 0.0.0.0 \
     --port 8080 \

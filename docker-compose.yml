@@ -17,6 +17,7 @@ services:
       # /dev/dma_heap would be mounted here once it lands. For now use a USB
       # or RTSP camera, or run curbcam natively for the Pi Camera Module.
     env_file:
-      - .env                    # optional; see .env.example
+      - path: .env            # optional — create from .env.example for RTSP creds etc.
+        required: false
     environment:
       - TZ=America/Los_Angeles  # log timestamps only
