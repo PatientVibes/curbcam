@@ -103,6 +103,22 @@ class ConfigStore:
     def save(self, settings: Settings) -> None:
         self._write_yaml(settings.model_dump(mode="json"))
 
+    def load_raw(self) -> dict[str, Any]:
+        """Return the YAML dict as-on-disk, WITHOUT env-var overlay.
+
+        Used by the settings UI so saving never bakes an env-shadowed
+        value into the file (spec §5). Returns defaults if the file is
+        absent.
+        """
+        if not self._path.exists():
+            return Settings().model_dump(mode="json")
+        with self._path.open("r", encoding="utf-8") as f:
+            data: dict[str, Any] = yaml.safe_load(f) or {}
+            return data
+
+    def save_raw(self, data: dict[str, Any]) -> None:
+        self._write_yaml(data)
+
     def _write_yaml(self, data: dict[str, Any]) -> None:
         with self._path.open("w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False, indent=2)

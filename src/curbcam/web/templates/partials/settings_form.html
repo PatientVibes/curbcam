@@ -1,0 +1,28 @@
+<form id="settings-form" hx-post="/api/settings" hx-target="#settings-form" hx-swap="outerHTML">
+  {% for group_name, fields in groups.items() %}
+  <fieldset>
+    <legend>{{ group_name|capitalize }}</legend>
+    {% for f in fields %}
+    <div class="setting">
+      <label for="{{ f.key }}">{{ f.label }}</label>
+      {% if f.kind == "select" %}
+        <select id="{{ f.key }}" name="{{ f.key }}" {% if f.env %}disabled{% endif %}>
+          {% for opt in f.options %}
+          <option value="{{ opt }}" {% if opt == f.value %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input id="{{ f.key }}" name="{{ f.key }}" value="{{ f.value }}"
+               {% if f.kind == "number" %}inputmode="decimal"{% endif %}
+               {% if f.env %}readonly{% endif %}>
+      {% endif %}
+      <small class="help">{{ f.help }}</small>
+      {% if f.env %}<span class="badge-env">set via environment</span>{% endif %}
+      {% if f.error %}<span class="field-error">{{ f.error }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+  <button type="submit">Save &amp; restart</button>
+  {% if saved %}<span class="saved-ok">Saved — detector restarting…</span>{% endif %}
+</form>

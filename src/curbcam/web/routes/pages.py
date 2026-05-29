@@ -62,3 +62,19 @@ def events_page(
         "events.html",
         {"events": rows, "units": units, "next_cursor": next_cursor, "query": ""},
     )
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request,
+    _: None = Depends(require_session),
+    sup: Supervisor = Depends(get_supervisor),
+) -> HTMLResponse:
+    from curbcam.web.settings_form import build_groups
+
+    raw = sup.config_store.load_raw()
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {"groups": build_groups(raw), "tokens": sup.auth.list_stream_tokens(), "saved": False},
+    )
