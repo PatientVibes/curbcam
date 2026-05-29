@@ -60,6 +60,17 @@ Add `archive.raspberrypi.com/debian` (trixie suite) via a `signed-by` keyring. D
 is 0.4 and **lacks the Raspberry Pi camera pipeline**; the RPi archive supplies 0.7 with the hardware
 drivers. Without this the camera will not enumerate.
 
+**Keyring — use the re-signed key, NOT the legacy URL (verified on real arm64 Trixie, 2026-05-29).**
+Debian Trixie verifies apt signatures with sequoia/`sqv`, which **rejects SHA1 since 2026-02-01**. The
+legacy `https://archive.raspberrypi.org/debian/raspberrypi.gpg.key` URL still serves the old key whose
+self-binding signature uses SHA1 → `apt update` fails with *"repository is not signed."* The Raspberry
+Pi project re-signed the **same** key with SHA512 (2025-06-05) and ships it via the
+`raspberrypi-archive-keyring` package. The image therefore **vendors that re-signed keyring**
+(`docker/raspberrypi-archive-keyring.pgp`) and references it with `signed-by` — keeping full apt
+signature verification on (NOT `trusted=yes`, no crypto-policy relaxation), exactly as Raspberry Pi OS
+itself does. If the archive key rotates, refresh the vendored file from a trusted Pi's
+`/usr/share/keyrings/raspberrypi-archive-keyring.pgp`.
+
 ### 4.3 The dependency model — all C-extensions from apt (the correctness core)
 
 Every Python package with a compiled C-extension that links `numpy` — `numpy`, `opencv`, `libcamera`,
@@ -160,6 +171,17 @@ best-effort and may need adjustment per Pi model/kernel.
   `docker compose -f docker-compose.picamera.yml up -d` → browse `http://curbcam.local:8080` → the live
   preview shows the Pi camera and the calibration wizard completes. `docker exec <ctr> python -c
   "import picamera2"` succeeds.
+
+**Hardware verification done (2026-05-29, Pi 5 / Debian Trixie / aarch64, no camera attached):** the
+image builds natively (1.46 GB); the §4.5 assertion passed (`import numpy, cv2, picamera2, libcamera` →
+numpy 2.2.4 on one ABI); runs on distro Python 3.13; boots, migrates, `/healthz`=200, `/`→303, mDNS
+banner; libcamera v0.7.1+rpt initializes and `picamera2.Picamera2.global_camera_info()` returns `0`
+(correct — no module attached), failing at camera open rather than import. **Still unverified:** actual
+frame capture (needs a physical camera module).
+
+**Install caveat (also from the hardware run):** Debian's `docker.io` ships only Compose v1; the v2
+plugin (`docker compose`) is not in apt. RPi users who installed Docker via `get.docker.com` (Docker CE)
+have it; others must install the compose plugin. The README install steps assume `docker compose` (v2).
 
 ## 10. Open Questions
 

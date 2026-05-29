@@ -163,21 +163,19 @@ RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /wheels/require
 # ---- runtime: debian:trixie (distro python3 == 3.13) + RPi libcamera stack ----
 FROM debian:trixie-slim AS runtime
 # Add the Raspberry Pi apt archive (libcamera 0.7 with the Pi camera pipeline;
-# Debian's own libcamera 0.4 lacks it — spec §4.2), then install the entire
-# numpy-linked C-extension stack from apt so it shares one consistent ABI.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
-    && curl -fsSL https://archive.raspberrypi.org/debian/raspberrypi.gpg.key \
-        | gpg --dearmor -o /usr/share/keyrings/raspberrypi-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.gpg] https://archive.raspberrypi.com/debian trixie main" \
+# Debian's own libcamera 0.4 lacks it — spec §4.2). Vendor the OFFICIAL re-signed
+# (SHA512) keyring: Trixie's sequoia/sqv rejects SHA1 (since 2026-02-01) and the
+# legacy raspberrypi.gpg.key URL still serves the old SHA1-bound key, so fetching
+# it fails apt verification ("repository is not signed"). signed-by keeps full
+# verification ON (NOT trusted=yes). Verified on real arm64 Trixie 2026-05-29.
+COPY docker/raspberrypi-archive-keyring.pgp /usr/share/keyrings/raspberrypi-archive-keyring.pgp
+RUN echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.pgp] http://archive.raspberrypi.com/debian trixie main" \
         > /etc/apt/sources.list.d/raspberrypi.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 python3-venv \
         python3-picamera2 python3-opencv python3-kms++ libcamera-ipa \
         libglib2.0-0 libgomp1 tini \
-    && apt-get purge -y curl gnupg \
-    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -211,15 +209,28 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 ```
 
-- [ ] **Step 2: Verify the Raspberry Pi archive key URL resolves (cheap pre-flight)**
+- [ ] **Step 2: Vendor the re-signed Raspberry Pi keyring**
+
+`Dockerfile.picamera` references `docker/raspberrypi-archive-keyring.pgp`. This is the OFFICIAL RPi
+archive keyring **with the SHA512 self-signature** (the `raspberrypi-archive-keyring` package's key).
+Do NOT `curl` the legacy `archive.raspberrypi.org/debian/raspberrypi.gpg.key` — it still serves the old
+SHA1-bound key, which Debian Trixie's `sqv` rejects (verified on hardware, 2026-05-29). Obtain it from a
+trusted Raspberry Pi:
 
 ```bash
-curl -fsSL https://archive.raspberrypi.org/debian/raspberrypi.gpg.key | head -c 64 && echo " ...(key fetched)"
+scp <pi>:/usr/share/keyrings/raspberrypi-archive-keyring.pgp docker/raspberrypi-archive-keyring.pgp
+# sanity-check it carries the SHA512 (algo 10) binding, not SHA1 (algo 2):
+gpg --list-packets docker/raspberrypi-archive-keyring.pgp | grep -E "digest algo|sig created"
+# expect: digest algo 10 ... sig created 2025-06-05 (or newer)
 ```
 
-Expected: a PGP key blob is fetched (no 404). If this URL has moved, update the `Dockerfile.picamera`
-`curl` line to the current key location before proceeding. (The archive host for packages is
-`archive.raspberrypi.com`; the key has historically been served from `archive.raspberrypi.org`.)
+This file is already committed in the repo (≈1.2 KB; a public archive key). Refresh it only if the RPi
+archive key rotates.
+
+> **Status:** This task (and Task 3) are **implemented and hardware-validated** on a Pi 5 / Debian
+> Trixie / aarch64 (2026-05-29): the image builds (1.46 GB), the §4.5 ABI assertion passes
+> (`import numpy, cv2, picamera2, libcamera` → numpy 2.2.4), and the container boots on Python 3.13 with
+> libcamera v0.7.1 initializing. The remaining steps below are for whoever finalizes/re-runs the build.
 
 - [ ] **Step 3: (Optional) local arm64 build if buildx+QEMU is available**
 
@@ -452,6 +463,11 @@ This image bases on Debian Trixie and installs libcamera + picamera2 from the Ra
 archive. It runs `privileged: true` by default — the reliable path for camera device access on a
 dedicated Pi. Advanced users can switch to a scoped device list (commented in the compose file) and
 accept the extra setup. Requires a 64-bit Raspberry Pi OS.
+
+> **`docker compose` (v2) required.** The commands above use the Compose v2 plugin. Docker installed
+> via `get.docker.com` (Docker CE) includes it; on a Debian-packaged `docker.io` install the v2 plugin
+> is not in apt (only the legacy v1 `docker-compose`), so install the plugin first. (Found during the
+> 2026-05-29 hardware run.)
 ```
 
 - [ ] **Step 2: Un-defer in the MVP-3 spec**
