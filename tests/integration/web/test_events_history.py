@@ -13,8 +13,10 @@ def _seed(supervisor, n: int = 5) -> None:  # type: ignore[no-untyped-def]
             ts_utc=dt.datetime(2026, 5, 28, 12, i, 0),
             speed_kph=20.0 + i * 10,
             direction="L2R" if i % 2 == 0 else "R2L",
-            frame_count=10, track_len_px=200,
-            image_path=f"events/e_{i}.jpg", thumb_path=f"thumbs/e_{i}.jpg",
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"events/e_{i}.jpg",
+            thumb_path=f"thumbs/e_{i}.jpg",
             calibration_id=None,
         )
 

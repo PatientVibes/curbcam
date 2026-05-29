@@ -4,6 +4,7 @@ MJPEG: one shared annotated-frame slot, read at a fixed fps regardless of
 camera rate. Viewer refcount is incremented on entry and decremented in a
 finally so the runner stops encoding when nobody is watching.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -17,8 +18,14 @@ import numpy as np
 def _placeholder_jpeg() -> bytes:
     img = np.zeros((480, 640, 3), dtype=np.uint8)
     cv2.putText(
-        img, "no signal", (200, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-        (255, 255, 255), 2, cv2.LINE_AA,
+        img,
+        "no signal",
+        (200, 240),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.2,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
     )
     _ok, buf = cv2.imencode(".jpg", img)
     return bytes(buf)
@@ -36,8 +43,7 @@ async def mjpeg_generator(sup, fps: float = 5.0) -> AsyncIterator[bytes]:  # typ
             yield (
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n"
-                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n"
-                + frame + b"\r\n"
+                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
             )
             await asyncio.sleep(delay)
     finally:

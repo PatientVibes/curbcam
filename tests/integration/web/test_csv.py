@@ -15,8 +15,13 @@ def test_csv_export_headers_and_unit_conversion(client, supervisor) -> None:  # 
     _configure(client, supervisor)
     supervisor.events.save(
         ts_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
-        speed_kph=80.4672, direction="L2R", frame_count=10, track_len_px=200,
-        image_path="events/e.jpg", thumb_path="thumbs/e.jpg", calibration_id=None,
+        speed_kph=80.4672,
+        direction="L2R",
+        frame_count=10,
+        track_len_px=200,
+        image_path="events/e.jpg",
+        thumb_path="thumbs/e.jpg",
+        calibration_id=None,
     )
     resp = client.get("/api/events.csv")
     assert resp.status_code == 200

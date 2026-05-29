@@ -5,6 +5,7 @@ itsdangerous to sign session cookies and stream tokens), and a list of
 revocable stream tokens stored only as Argon2 hashes. Raw tokens are
 shown to the user once at mint time.
 """
+
 from __future__ import annotations
 
 import json
@@ -95,14 +96,9 @@ class AuthStore:
         return False
 
     def list_stream_tokens(self) -> list[dict[str, Any]]:
-        return [
-            {"id": t["id"], "label": t["label"]}
-            for t in self._read().get("stream_tokens", [])
-        ]
+        return [{"id": t["id"], "label": t["label"]} for t in self._read().get("stream_tokens", [])]
 
     def revoke_stream_token(self, token_id: str) -> None:
         data = self._read()
-        data["stream_tokens"] = [
-            t for t in data.get("stream_tokens", []) if t["id"] != token_id
-        ]
+        data["stream_tokens"] = [t for t in data.get("stream_tokens", []) if t["id"] != token_id]
         self._write(data)

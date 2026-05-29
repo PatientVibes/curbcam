@@ -1,4 +1,5 @@
 """Server-rendered pages."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -53,9 +54,7 @@ def dashboard(
 ) -> HTMLResponse:
     units = sup.config_store.load().server.units
     events = sup.events.list_recent(limit=10)
-    return templates.TemplateResponse(
-        request, "dashboard.html", {"events": events, "units": units}
-    )
+    return templates.TemplateResponse(request, "dashboard.html", {"events": events, "units": units})
 
 
 @router.get("/events", response_class=HTMLResponse)
@@ -69,9 +68,7 @@ def events_page(
     units = sup.config_store.load().server.units
     limit = 24
     rows = sup.events.query(EventFilter(), limit=limit)
-    next_cursor = (
-        f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == limit else ""
-    )
+    next_cursor = f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == limit else ""
     return templates.TemplateResponse(
         request,
         "events.html",

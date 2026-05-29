@@ -4,6 +4,7 @@ Pure function of the Supervisor so the whole app is testable with a
 FileReplaySource-backed supervisor (no hardware). Startup binds the event
 loop to the bus and starts the pipeline; shutdown stops it.
 """
+
 from __future__ import annotations
 
 import asyncio

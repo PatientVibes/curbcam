@@ -4,6 +4,7 @@ Speeds are always stored in kph (the pipeline's native unit). The display
 unit (kph | mph) is a server.units setting applied at render/export time.
 Calibration distances are entered in m/ft/in/mm and converted to mm.
 """
+
 from __future__ import annotations
 
 _KPH_PER_MPH = 1.609344

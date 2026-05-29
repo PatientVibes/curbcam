@@ -1,4 +1,5 @@
 """Live MJPEG preview. Accepts a session cookie OR a ?token= stream token."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query

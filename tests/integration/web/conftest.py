@@ -1,4 +1,5 @@
 """A FileReplaySource-backed app + TestClient, no hardware needed."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator

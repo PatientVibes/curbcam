@@ -7,6 +7,7 @@ near-simultaneous settings saves cannot race to replace the runner thread
 capture_still / viewers / overlay / stats) is wired in Slice C once the
 PipelineRunner exposes it; until then those return safe defaults.
 """
+
 from __future__ import annotations
 
 import threading

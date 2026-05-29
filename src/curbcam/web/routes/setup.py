@@ -1,4 +1,5 @@
 """First-run wizard endpoints. /api/setup/* is gate-exempt."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
