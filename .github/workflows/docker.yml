@@ -1,0 +1,117 @@
+name: docker
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-smoke:
+    name: build amd64 + smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build amd64 image (load locally)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: curbcam:smoke
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          set -euo pipefail
+          mkdir -p smoke/data smoke/media smoke/frames
+          # Seed one valid PNG (pure stdlib) so the file-replay pipeline thread
+          # opens cleanly instead of crash-looping on an empty dir.
+          python3 - <<'PY'
+          import struct, zlib
+          def chunk(typ, data):
+              body = typ + data
+              return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xffffffff)
+          w = h = 16
+          raw = b"".join(b"\x00" + b"\x80" * (w * 3) for _ in range(h))  # filter byte + RGB row
+          png = b"\x89PNG\r\n\x1a\n"
+          png += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))  # 8-bit RGB
+          png += chunk(b"IDAT", zlib.compress(raw))
+          png += chunk(b"IEND", b"")
+          open("smoke/frames/frame.png", "wb").write(png)
+          PY
+          docker run -d --name curbcam-smoke \
+            -p 8080:8080 \
+            -v "$PWD/smoke/data:/data" \
+            -v "$PWD/smoke/media:/media" \
+            -v "$PWD/smoke/frames:/frames" \
+            -e CURBCAM_CAMERA__SOURCE=file:/frames \
+            curbcam:smoke --no-mdns
+
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/healthz >/dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          if [ "$ok" != "1" ]; then echo "healthz never came up"; docker logs curbcam-smoke; exit 1; fi
+
+          echo "healthz OK"
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)
+          if [ "$code" != "303" ]; then echo "expected / -> 303, got $code"; docker logs curbcam-smoke; exit 1; fi
+          echo "root redirect OK ($code)"
+
+          # The entrypoint must have migrated the DB to head before serving.
+          if [ ! -f smoke/data/curbcam.sqlite ]; then echo "db upgrade did not create the sqlite"; docker logs curbcam-smoke; exit 1; fi
+          echo "db migrated OK"
+
+          docker logs curbcam-smoke
+          docker rm -f curbcam-smoke
+
+  release:
+    name: multi-arch release -> GHCR
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/patientvibes/curbcam
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern=v{{version}}
+
+      - name: Build + push multi-arch
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false

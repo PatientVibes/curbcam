@@ -17,6 +17,7 @@ dependencies = [
     "structlog>=24.1",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "zeroconf>=0.132",
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
     "itsdangerous>=2.2",
@@ -50,9 +51,12 @@ packages = ["src/curbcam"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra --strict-markers --strict-config -m 'not e2e'"
+addopts = "-ra --strict-markers --strict-config -m 'not e2e and not docker'"
 pythonpath = ["src"]
-markers = ["e2e: browser end-to-end tests (require playwright browsers)"]
+markers = [
+    "e2e: browser end-to-end tests (require playwright browsers)",
+    "docker: tests that build/run the Docker image (excluded from default run)",
+]
 
 [tool.ruff]
 line-length = 100

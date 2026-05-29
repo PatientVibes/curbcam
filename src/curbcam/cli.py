@@ -11,9 +11,13 @@ from pathlib import Path
 
 import typer
 import uvicorn
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 
 from curbcam.camera.factory import camera_from_source
 from curbcam.config.store import ConfigStore
+from curbcam.discovery.mdns import MDNSPublisher
+from curbcam.discovery.net import detect_lan_ip
 from curbcam.pipeline.events import EventBus
 from curbcam.pipeline.runner import PipelineRunner
 from curbcam.storage.db import Database, ensure_schema
@@ -104,6 +108,7 @@ def serve(
     config: Path = typer.Option(Path("curbcam.yaml"), help="Path to YAML config"),
     data_dir: Path = typer.Option(Path("./data"), help="Directory for SQLite DB"),
     media_dir: Path = typer.Option(Path("./media"), help="Directory for event JPEGs"),
+    mdns: bool = typer.Option(True, "--mdns/--no-mdns", help="Advertise curbcam.local via mDNS"),
 ) -> None:
     """Run the web app: detector pipeline + UI in one process."""
     store = ConfigStore(config)
@@ -121,7 +126,27 @@ def serve(
         auth_store=AuthStore(data_dir / "auth.json"),
     )
     app_obj = create_app(supervisor)
-    uvicorn.run(app_obj, host=host, port=port)
+
+    publisher: MDNSPublisher | None = None
+    if mdns:
+        ip = detect_lan_ip()
+        try:
+            publisher = MDNSPublisher(ip, port)
+            publisher.start()
+        except Exception:
+            logging.getLogger("curbcam").warning(
+                "mDNS advertisement failed; continuing without curbcam.local "
+                "(reach the app at the IP address below)",
+                exc_info=True,
+            )
+            publisher = None
+        typer.echo(f"Open http://curbcam.local:{port}   (or http://{ip}:{port})")
+
+    try:
+        uvicorn.run(app_obj, host=host, port=port)
+    finally:
+        if publisher is not None:
+            publisher.stop()
 
 
 @app.command()
@@ -159,6 +184,23 @@ def db_init(data_dir: Path = typer.Option(Path("./data"))) -> None:
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
     ensure_schema(db)
     typer.echo(f"Schema initialised at {data_dir / 'curbcam.sqlite'}")
+
+
+@db_app.command("upgrade")
+def db_upgrade(data_dir: Path = typer.Option(Path("./data"))) -> None:
+    """Run all pending Alembic migrations against the data-dir database.
+
+    Used by the container entrypoint on every boot so `docker compose pull`
+    of a newer image migrates an existing install to head (spec §6).
+    `alembic.ini`'s relative sqlalchemy.url is overridden so --data-dir is
+    the single source of truth for the DB location.
+    """
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db_path = data_dir / "curbcam.sqlite"
+    cfg = AlembicConfig("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+    alembic_command.upgrade(cfg, "head")
+    typer.echo(f"Database at {db_path} upgraded to head.")
 
 
 def main() -> None:  # pragma: no cover

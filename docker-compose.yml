@@ -1,0 +1,23 @@
+services:
+  curbcam:
+    image: ghcr.io/patientvibes/curbcam:latest
+    restart: unless-stopped
+    # REQUIRED: mDNS multicast (curbcam.local) cannot cross the Docker bridge
+    # NAT, so the container shares the host network. Host networking also
+    # publishes port 8080 directly — there is intentionally no `ports:` block.
+    network_mode: host
+    init: true
+    volumes:
+      - ./data:/data            # curbcam.yaml, curbcam.sqlite, auth.json
+      - ./media:/media          # event images + thumbnails
+      - /run/udev:/run/udev:ro
+    devices:
+      - /dev/video0:/dev/video0 # USB / V4L2 camera
+      # Pi Camera Module (picamera2) in Docker is a future slice (spec §2.2);
+      # /dev/dma_heap would be mounted here once it lands. For now use a USB
+      # or RTSP camera, or run curbcam natively for the Pi Camera Module.
+    env_file:
+      - path: .env            # optional — create from .env.example for RTSP creds etc.
+        required: false
+    environment:
+      - TZ=America/Los_Angeles  # log timestamps only
