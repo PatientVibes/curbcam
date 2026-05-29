@@ -12,6 +12,7 @@ from pathlib import Path
 from curbcam.config.store import ConfigStore
 from curbcam.pipeline.events import EventBus
 from curbcam.storage.db import Database, ensure_schema
+from curbcam.web.auth import AuthStore
 from curbcam.web.supervisor import Supervisor
 
 
@@ -36,7 +37,11 @@ def _make_supervisor(tmp_path: Path) -> Supervisor:
     store = ConfigStore(tmp_path / "curbcam.yaml")
     store.load()  # create defaults file
     return Supervisor(
-        config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media"
+        config_store=store,
+        db=db,
+        bus=EventBus(),
+        media_root=tmp_path / "media",
+        auth_store=AuthStore(tmp_path / "auth.json"),
     )
 
 
