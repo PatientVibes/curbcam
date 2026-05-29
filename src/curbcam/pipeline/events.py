@@ -22,15 +22,16 @@ class EventEnvelope:
 
 
 class EventBus:
-    def __init__(self) -> None:
+    def __init__(self, maxsize: int = 100) -> None:
         self._subs: list[asyncio.Queue[EventEnvelope]] = []
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._maxsize = maxsize
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 
     def subscribe(self) -> asyncio.Queue[EventEnvelope]:
-        q: asyncio.Queue[EventEnvelope] = asyncio.Queue()
+        q: asyncio.Queue[EventEnvelope] = asyncio.Queue(maxsize=self._maxsize)
         self._subs.append(q)
         return q
 
@@ -41,9 +42,17 @@ class EventBus:
             pass
 
     def publish(self, env: EventEnvelope) -> None:
-        """Call from inside the asyncio loop."""
+        """Call from inside the asyncio loop. Drops oldest on a full queue."""
         for q in self._subs:
-            q.put_nowait(env)
+            while True:
+                try:
+                    q.put_nowait(env)
+                    break
+                except asyncio.QueueFull:
+                    try:
+                        q.get_nowait()  # drop oldest, retry
+                    except asyncio.QueueEmpty:
+                        break
 
     def publish_threadsafe(self, env: EventEnvelope) -> None:
         """Call from any thread. Requires ``bind_loop`` to have been called."""
