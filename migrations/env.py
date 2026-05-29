@@ -11,7 +11,11 @@ from curbcam.storage.models import Base
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: running migrations must not tear down
+    # loggers configured elsewhere in the process (it silently broke caplog
+    # in the test suite, and would clobber the app logger if migrations ran
+    # in-process). Alembic's own logging still gets configured.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
