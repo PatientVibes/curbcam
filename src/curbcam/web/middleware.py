@@ -14,6 +14,7 @@ from starlette.responses import RedirectResponse, Response
 
 _EXEMPT_PREFIXES = (
     "/setup",
+    "/api/setup",
     "/api/auth/login",
     "/api/calibration",
     "/api/crop",

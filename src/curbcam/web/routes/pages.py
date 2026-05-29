@@ -2,13 +2,28 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from curbcam.web.deps import get_supervisor, require_session
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
 
 router = APIRouter()
+
+
+@router.get("/setup", response_class=HTMLResponse, response_model=None)
+def setup_page(
+    request: Request,
+    sup: Supervisor = Depends(get_supervisor),
+) -> HTMLResponse | RedirectResponse:
+    # No session required — this is the entry point before any password exists.
+    if sup.auth.has_password() and sup.calibrations.get_active() is not None:
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "setup/index.html",
+        {"need_password": not sup.auth.has_password()},
+    )
 
 
 @router.get("/media/{path:path}")

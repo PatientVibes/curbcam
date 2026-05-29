@@ -1,0 +1,20 @@
+<div id="setup-step">
+  <h2>2 · Before you start</h2>
+  <p>Speed cameras capture people and vehicles in public spaces. <strong>Check your
+  local laws</strong> before pointing this at a road. Nothing leaves this device.</p>
+  <label><input type="checkbox" id="ack"> I understand</label>
+
+  <h2>3 · Camera source</h2>
+  <form hx-post="/api/setup/camera" hx-target="#camera-result" hx-swap="innerHTML">
+    <input name="source" placeholder="picamera2:0 | usb:0 | rtsp://... | file:./fixtures" required>
+    <button type="submit">Use this camera</button>
+  </form>
+  <span id="camera-result"></span>
+
+  <h2>4 · Confirm preview</h2>
+  <img id="setup-preview" src="/api/stream.mjpeg" alt="live preview" style="max-width:640px">
+
+  <h2>5 · Align &amp; calibrate</h2>
+  <a href="/setup/align">Set detection region &raquo;</a>
+  <a href="/setup/calibrate">Calibrate speed &raquo;</a>
+</div>
