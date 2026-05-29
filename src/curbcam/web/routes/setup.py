@@ -1,7 +1,7 @@
 """First-run wizard endpoints. /api/setup/* is gate-exempt."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -18,6 +18,12 @@ def setup_password(
     password: str = Form(..., min_length=6),
     sup: Supervisor = Depends(get_supervisor),
 ) -> HTMLResponse:
+    # This endpoint is gate-exempt and unauthenticated so a fresh install can
+    # bootstrap. It must therefore set the password ONLY when none exists —
+    # otherwise it's an unauthenticated password-reset / account-takeover on a
+    # configured device. Password changes go through authenticated Settings.
+    if sup.auth.has_password():
+        raise HTTPException(status_code=409, detail="Admin password already set")
     sup.auth.set_password(password)
     resp = templates.TemplateResponse(request, "setup/configure.html", {})
     issue_session(sup, resp)

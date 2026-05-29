@@ -12,6 +12,16 @@ def test_setup_password_sets_password_and_session(client, supervisor) -> None:  
     assert 'name="source"' in resp.text  # configure panel follows
 
 
+def test_setup_password_rejected_once_set(client, supervisor) -> None:  # type: ignore[no-untyped-def]
+    # /api/setup/password is unauthenticated for bootstrap; once a password
+    # exists it must refuse, or it's an unauthenticated account-takeover.
+    supervisor.auth.set_password("original")
+    resp = client.post("/api/setup/password", data={"password": "attacker"}, follow_redirects=False)
+    assert resp.status_code == 409
+    assert supervisor.auth.verify_password("original") is True
+    assert supervisor.auth.verify_password("attacker") is False
+
+
 def test_setup_camera_saves_source_and_restarts(client, supervisor, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     supervisor.auth.set_password("s3cret")
     client.post("/api/auth/login", data={"password": "s3cret"})
