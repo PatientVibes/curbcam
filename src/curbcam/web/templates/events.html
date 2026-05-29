@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Events</h1>
+<form class="filters" hx-get="/api/events" hx-target="#rows" hx-swap="innerHTML">
+  <label>From <input type="date" name="start"></label>
+  <label>To <input type="date" name="end"></label>
+  <label>Min speed <input type="number" step="0.1" name="min_speed"></label>
+  <label>Max speed <input type="number" step="0.1" name="max_speed"></label>
+  <label>Direction
+    <select name="direction">
+      <option value="">Any</option>
+      <option value="L2R">&gt;&gt;</option>
+      <option value="R2L">&lt;&lt;</option>
+    </select>
+  </label>
+  <button type="submit">Filter</button>
+  <a class="csv" href="/api/events.csv">Export CSV</a>
+</form>
+<section id="rows" class="event-list" data-units="{{ units }}">
+  {% include "partials/events_rows.html" %}
+</section>
+{% endblock %}

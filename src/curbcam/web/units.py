@@ -18,5 +18,9 @@ def format_speed(kph: float, units: str) -> str:
     return f"{kph_to_display(kph, units):.1f} {units}"
 
 
+def display_to_kph(value: float, units: str) -> float:
+    return value if units == "kph" else value * _KPH_PER_MPH
+
+
 def distance_to_mm(value: float, unit: str) -> float:
     return value * _TO_MM[unit]
