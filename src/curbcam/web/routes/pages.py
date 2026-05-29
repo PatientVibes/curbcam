@@ -86,3 +86,11 @@ def calibrate_wizard(
     _: None = Depends(require_session),
 ) -> HTMLResponse:
     return templates.TemplateResponse(request, "setup/calibrate.html", {})
+
+
+@router.get("/setup/align", response_class=HTMLResponse)
+def align_wizard(
+    request: Request,
+    _: None = Depends(require_session),
+) -> HTMLResponse:
+    return templates.TemplateResponse(request, "setup/align.html", {})
