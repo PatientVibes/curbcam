@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from curbcam.pipeline.events import EventBus, EventEnvelope

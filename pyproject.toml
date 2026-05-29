@@ -68,6 +68,7 @@ ignore = ["E501"]   # ruff format handles line length
 [tool.ruff.lint.per-file-ignores]
 "src/curbcam/cli.py" = ["B008"]   # typer.Option() in defaults is the canonical Typer pattern
 "src/curbcam/web/routes/*" = ["B008"]   # Depends()/Form() in defaults is the canonical FastAPI pattern
+"src/curbcam/web/deps.py" = ["B008"]   # Query() in dependency-function defaults is canonical FastAPI too
 
 [tool.mypy]
 python_version = "3.12"
