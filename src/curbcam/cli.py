@@ -130,8 +130,16 @@ def serve(
     publisher: MDNSPublisher | None = None
     if mdns:
         ip = detect_lan_ip()
-        publisher = MDNSPublisher(ip, port)
-        publisher.start()
+        try:
+            publisher = MDNSPublisher(ip, port)
+            publisher.start()
+        except Exception:
+            logging.getLogger("curbcam").warning(
+                "mDNS advertisement failed; continuing without curbcam.local "
+                "(reach the app at the IP address below)",
+                exc_info=True,
+            )
+            publisher = None
         typer.echo(f"Open http://curbcam.local:{port}   (or http://{ip}:{port})")
 
     try:

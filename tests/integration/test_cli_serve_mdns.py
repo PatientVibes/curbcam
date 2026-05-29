@@ -105,3 +105,32 @@ def test_serve_stops_publisher_even_when_uvicorn_raises(tmp_path: Path, monkeypa
     assert result.exit_code != 0
     assert len(_FakePublisher.instances) == 1
     assert _FakePublisher.instances[0].stopped == 1
+
+
+def test_serve_survives_mdns_start_failure(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    _patch(monkeypatch)
+
+    class _RaisingPublisher:
+        def __init__(self, ip: str, port: int) -> None:
+            pass
+
+        def start(self) -> None:
+            raise OSError("cannot bind multicast")
+
+        def stop(self) -> None:  # pragma: no cover - should never be called
+            raise AssertionError("stop() must not be called when start() failed")
+
+    monkeypatch.setattr(cli_mod, "MDNSPublisher", _RaisingPublisher)
+    result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
+    )
+    assert result.exit_code == 0, result.output  # uvicorn.run is patched to a no-op
