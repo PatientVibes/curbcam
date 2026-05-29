@@ -10,6 +10,30 @@ function renderTimes(root) {
 document.addEventListener("DOMContentLoaded", () => {
   renderTimes(document);
 
+  // htmx swaps in events_rows.html with empty <time> elements (filter + Load
+  // more); re-render local times on every swap so paginated/filtered rows
+  // aren't left blank. renderTimes skips already-filled elements, so this is
+  // idempotent and cheap.
+  document.body.addEventListener("htmx:afterSwap", (e) => renderTimes(e.target));
+
+  // Keep the "Export CSV" link in sync with the filter form so an export
+  // reflects the on-screen filters rather than the full history.
+  const filters = document.querySelector("form.filters");
+  const csvLink = filters && filters.querySelector("a.csv");
+  if (filters && csvLink) {
+    const syncCsv = () => {
+      const params = new URLSearchParams();
+      new FormData(filters).forEach((v, k) => {
+        if (v !== "") params.append(k, v);
+      });
+      const qs = params.toString();
+      csvLink.href = "/api/events.csv" + (qs ? `?${qs}` : "");
+    };
+    filters.addEventListener("input", syncCsv);
+    filters.addEventListener("change", syncCsv);
+    syncCsv();
+  }
+
   const list = document.getElementById("event-list");
   if (list && list.dataset.sse) {
     const units = list.dataset.units || "kph";
