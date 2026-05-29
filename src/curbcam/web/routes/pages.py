@@ -1,14 +1,33 @@
 """Server-rendered pages."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
 
 from curbcam.web.deps import get_supervisor, require_session
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
 
 router = APIRouter()
+
+
+@router.get("/media/{path:path}")
+def media(
+    path: str,
+    _: None = Depends(require_session),
+    sup: Supervisor = Depends(get_supervisor),
+) -> FileResponse:
+    """Serve event images behind the admin session (spec §6).
+
+    A bare StaticFiles mount would expose private event JPEGs to anyone on
+    the LAN once configured. This route requires a session and confirms the
+    resolved file stays inside media_root (path-traversal guard).
+    """
+    root = sup.media_root.resolve()
+    target = (root / path).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(target)
 
 
 @router.get("/", response_class=HTMLResponse)
