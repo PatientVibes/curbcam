@@ -20,6 +20,7 @@ from curbcam.storage.db import Database, ensure_schema
 from curbcam.storage.media import MediaWriter
 from curbcam.storage.repositories import CalibrationRepo
 from curbcam.web.app import create_app
+from curbcam.web.auth import AuthStore
 from curbcam.web.supervisor import Supervisor
 
 app = typer.Typer(help="curbcam — speed camera CLI", no_args_is_help=True)
@@ -113,7 +114,11 @@ def serve(
     ensure_schema(db)
 
     supervisor = Supervisor(
-        config_store=store, db=db, bus=EventBus(), media_root=media_dir
+        config_store=store,
+        db=db,
+        bus=EventBus(),
+        media_root=media_dir,
+        auth_store=AuthStore(data_dir / "auth.json"),
     )
     app_obj = create_app(supervisor)
     uvicorn.run(app_obj, host=host, port=port)

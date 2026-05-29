@@ -20,6 +20,7 @@ from curbcam.pipeline.runner import PipelineRunner
 from curbcam.storage.db import Database
 from curbcam.storage.media import MediaWriter
 from curbcam.storage.repositories import CalibrationRepo, EventRepo
+from curbcam.web.auth import AuthStore
 
 
 class Supervisor:
@@ -30,12 +31,14 @@ class Supervisor:
         db: Database,
         bus: EventBus,
         media_root: Path,
+        auth_store: AuthStore,
     ) -> None:
         self._config_store = config_store
         self._db = db
         self._bus = bus
         self._media_root = media_root
         self._media = MediaWriter(media_root)
+        self.auth = auth_store
         self.calibrations = CalibrationRepo(db)
         self.events = EventRepo(db)
         self._runner: PipelineRunner | None = None
