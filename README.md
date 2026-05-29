@@ -3,12 +3,11 @@
 A modern, neighbor-friendly speed camera for Raspberry Pi.
 
 Detects moving vehicles, calculates speed, stores results — all configurable
-through a web UI (coming in MVP-2) with a guided calibration wizard. No SSH
-required for normal use.
+through a web UI with a guided calibration wizard. No SSH required for normal
+use.
 
-**Status:** MVP-1 (headless detector + CLI) — see
-[`docs/specs/2026-05-28-curbcam-design.md`](docs/specs/2026-05-28-curbcam-design.md)
-for the full design.
+**Status:** MVP-2 (web app: dashboard, live preview, wizards) — see
+[`docs/specs/2026-05-28-curbcam-mvp-2-web.md`](docs/specs/2026-05-28-curbcam-mvp-2-web.md).
 
 ## What works today (MVP-1)
 
@@ -35,6 +34,40 @@ uv run curbcam detect --camera file:./fixtures/sample_run --once
 
 Events land in `./data/curbcam.sqlite`; thumbnails and full-frame JPEGs in
 `./media/`.
+
+## Run the web app (MVP-2)
+
+```bash
+uv run curbcam serve            # http://<pi-ip>:8000
+```
+
+On first launch every page redirects to a setup wizard:
+
+1. Set a single admin password.
+2. Acknowledge the privacy notice (check your local laws — §15).
+3. Pick a camera source and confirm the live preview.
+4. **Align** — drag a rectangle over the road to set the detection region.
+5. **Calibrate** — capture a frame, click the two ends of a known-length
+   object, enter the real-world distance and travel direction.
+
+After setup: a dashboard with live MJPEG + an event feed, a filterable Events
+history with CSV export, and Settings (saving restarts the detector). Embed the
+preview elsewhere (e.g. Home Assistant) with a revocable stream token from
+**Settings → Integrations**: `http://<pi-ip>:8000/api/stream.mjpeg?token=...`.
+
+### Mounting for best accuracy
+
+Speed accuracy is limited by perspective and centroid jitter, not pixel count.
+Two tips that beat any software setting:
+
+- **Angle the camera somewhat down the road**, not straight across — this
+  flattens the near/far depth gradient and reduces perspective error.
+- **Calibrate each direction** against a reference at that lane's distance; the
+  two-scale model (`mm_per_px_l2r` / `mm_per_px_r2l`) exists for exactly the
+  near-lane/far-lane depth difference.
+
+(A perspective-homography calibration is planned for a future "calibration v2";
+it is the lever that would tighten accuracy further.)
 
 ## Camera sources
 
