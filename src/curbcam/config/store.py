@@ -78,21 +78,25 @@ class ConfigStore:
     def __init__(self, path: Path) -> None:
         self._path = path
 
+    @staticmethod
+    def _defaults_without_env() -> Settings:
+        """Construct Settings from field defaults ONLY, ignoring CURBCAM_* env
+        vars, so first-run/raw defaults never leak env-only credentials (e.g.
+        CURBCAM_CAMERA__SOURCE=rtsp://user:pw@...) into the on-disk YAML."""
+        env_snapshot = {k: v for k, v in os.environ.items() if k.startswith("CURBCAM_")}
+        try:
+            for k in env_snapshot:
+                del os.environ[k]
+            return Settings()
+        finally:
+            os.environ.update(env_snapshot)
+
     def load(self) -> Settings:
         if not self._path.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            # Write pure defaults WITHOUT env overlay so first-run does not
-            # leak env-only credentials (e.g. CURBCAM_CAMERA__SOURCE=rtsp://
-            # user:pw@...) into the on-disk YAML. Restore env afterwards and
-            # return an env-overlaid Settings for the caller.
-            env_snapshot = {k: v for k, v in os.environ.items() if k.startswith("CURBCAM_")}
-            try:
-                for k in env_snapshot:
-                    del os.environ[k]
-                defaults = Settings()
-            finally:
-                os.environ.update(env_snapshot)
-            self._write_yaml(defaults.model_dump(mode="json"))
+            # Write pure defaults WITHOUT env overlay (see _defaults_without_env),
+            # then return an env-overlaid Settings for the caller.
+            self._write_yaml(self._defaults_without_env().model_dump(mode="json"))
             return Settings()
 
         with self._path.open("r", encoding="utf-8") as f:
@@ -111,7 +115,7 @@ class ConfigStore:
         absent.
         """
         if not self._path.exists():
-            return Settings().model_dump(mode="json")
+            return self._defaults_without_env().model_dump(mode="json")
         with self._path.open("r", encoding="utf-8") as f:
             data: dict[str, Any] = yaml.safe_load(f) or {}
             return data
