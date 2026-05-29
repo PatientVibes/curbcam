@@ -14,3 +14,8 @@
 .event-meta .speed { font-weight: 600; }
 .field-error { color: #b00020; font-size: .85rem; }
 .badge-env { background: #555; color: #fff; font-size: .7rem; padding: 1px 6px; border-radius: 4px; }
+/* Wizard point-picking: the canvas must overlay the frame, not sit below it,
+   so clicks map to image pixels (calibrate + align wizards). */
+.canvas-wrap { position: relative; display: inline-block; max-width: 640px; }
+.canvas-wrap img { display: block; width: 100%; }
+.canvas-wrap canvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
