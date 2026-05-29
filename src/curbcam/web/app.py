@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from curbcam.web.routes import auth, debug
+from curbcam.web.routes import auth, debug, stream
 from curbcam.web.supervisor import Supervisor
 
 
@@ -42,4 +42,5 @@ def create_app(supervisor: Supervisor) -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(debug.router)
+    app.include_router(stream.router)
     return app

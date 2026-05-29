@@ -1,7 +1,7 @@
 """FastAPI dependencies + session cookie helpers."""
 from __future__ import annotations
 
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Query, Request, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from curbcam.web.supervisor import Supervisor
@@ -44,3 +44,12 @@ def require_session(request: Request) -> None:
     sup: Supervisor = request.app.state.supervisor
     if not session_is_valid(sup, request):
         raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+def require_stream_auth(request: Request, token: str | None = Query(default=None)) -> None:
+    sup: Supervisor = request.app.state.supervisor
+    if session_is_valid(sup, request):
+        return
+    if token and sup.auth.verify_stream_token(token):
+        return
+    raise HTTPException(status_code=401, detail="Not authenticated")
