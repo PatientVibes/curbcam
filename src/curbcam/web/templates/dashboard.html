@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="preview">
+  <img id="preview" src="/api/stream.mjpeg" alt="live preview">
+  <span id="tracking-pill" class="pill">idle</span>
+</section>
+<section id="event-list" class="event-list"
+         data-sse="/api/events/stream" data-units="{{ units }}">
+  {% for e in events %}
+    {% include "partials/event_card.html" %}
+  {% endfor %}
+</section>
+{% endblock %}
