@@ -1,6 +1,7 @@
 """/healthz must answer 200 even on a brand-new, unconfigured install —
 the first-run gate must NOT redirect it (the Docker HEALTHCHECK + CI smoke
 test depend on this)."""
+
 from fastapi.testclient import TestClient
 
 

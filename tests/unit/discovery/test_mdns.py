@@ -1,5 +1,6 @@
 """MDNSPublisher builds the right ServiceInfo and registers/unregisters it.
 A fake Zeroconf is injected so no multicast happens in the test."""
+
 from __future__ import annotations
 
 import socket

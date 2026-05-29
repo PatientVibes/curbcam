@@ -1,9 +1,8 @@
 """detect_lan_ip uses a UDP socket's chosen source address (no packet sent)
 and falls back to loopback on any OSError. Both paths are tested without
 real networking by substituting a fake socket."""
-from __future__ import annotations
 
-import socket
+from __future__ import annotations
 
 import curbcam.discovery.net as net
 
