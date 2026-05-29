@@ -440,6 +440,8 @@ stream is embedded.
 
 ## 11. Install & Deployment
 
+> **MVP-3 update (2026-05-29):** the install/discovery details below are refined in `docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md`; this section is annotated where they differ.
+
 ### 11.1 Docker Compose (the only install path)
 
 ```yaml
@@ -447,18 +449,21 @@ services:
   curbcam:
     image: ghcr.io/PatientVibes/curbcam:latest
     restart: unless-stopped
-    ports: ["8080:8080"]
+    # host networking is required for mDNS multicast; also publishes port 8080 directly
+    network_mode: host
+    init: true
     volumes:
       - ./data:/data            # YAML, sqlite, auth.json
       - ./media:/media          # event images + thumbs
       - /run/udev:/run/udev:ro
     devices:
       - /dev/video0:/dev/video0       # USB cam (if used)
-      - /dev/dma_heap:/dev/dma_heap   # picamera2/libcamera
+      - /dev/dma_heap:/dev/dma_heap   # picamera2/libcamera (future slice — not yet supported in-container)
     environment:
       - TZ=America/Los_Angeles
     env_file:
-      - .env                  # CURBCAM_CAMERA__SOURCE=rtsp://user:pw@... etc.
+      - path: .env              # CURBCAM_CAMERA__SOURCE=rtsp://user:pw@... etc.
+        required: false
 ```
 
 A gitignored `.env` keeps RTSP credentials and any other secrets out of
@@ -472,9 +477,11 @@ releases. Published to GHCR.
 
 ### 11.3 Discovery
 
-The container runs avahi and advertises itself as `curbcam.local`. After
-`docker compose up`, the user opens `http://curbcam.local:8080`. Fallback:
-container logs print `Open http://<detected-ip>:8080` if mDNS is unavailable.
+The app advertises `curbcam.local` via an in-process zeroconf publisher
+(python-zeroconf); no avahi/D-Bus daemon is required. `network_mode: host` is
+necessary for multicast to reach the LAN. After `docker compose up`, the user
+opens `http://curbcam.local:8080`. Fallback: container logs print
+`Open http://<detected-ip>:8080` if mDNS is unavailable.
 
 ### 11.4 User install path
 
@@ -530,6 +537,10 @@ Three commands.
 
 ### 13.2 Deferred to v0.2+
 
+- **picamera2 inside Docker** — Debian Bookworm's apt `python3-picamera2`
+  targets Python 3.11 while the image base is CPython 3.12 (ABI mismatch);
+  supported in-container cameras are USB/RTSP/file and the Pi Camera Module
+  remains native-only for now. See `docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md` §2.2.
 - Alerts (webhook, MQTT, ntfy on threshold) — clean to add, pipeline events
   are already pub-sub
 - Graphs page / Reports tab
@@ -555,7 +566,10 @@ Three commands.
 ## 14. Risks
 
 - **picamera2 + Docker on Pi 5 is the riskiest assembly.** Mitigated by
-  pinning the install README to Raspberry Pi OS Bookworm or newer.
+  pinning the install README to Raspberry Pi OS Bookworm or newer. In MVP-3
+  this is deferred — picamera2 is not yet supported inside the Docker image
+  due to a Python 3.11/3.12 ABI mismatch (§13.2); USB/RTSP cameras are the
+  supported Docker path.
 - **Detector parity with upstream is not guaranteed.** A synthetic-frame
   regression suite catches the obvious cases but cannot replicate every
   edge case upstream has tuned for over years. Documented as

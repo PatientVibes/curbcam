@@ -6,42 +6,58 @@ Detects moving vehicles, calculates speed, stores results — all configurable
 through a web UI with a guided calibration wizard. No SSH required for normal
 use.
 
-**Status:** MVP-2 (web app: dashboard, live preview, wizards) — see
-[`docs/specs/2026-05-28-curbcam-mvp-2-web.md`](docs/specs/2026-05-28-curbcam-mvp-2-web.md).
+**Status:** MVP-3 (Docker install + mDNS discovery) — see [`docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md`](docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md).
 
-## What works today (MVP-1)
-
-A command-line speed-camera pipeline:
+## Install (Docker)
 
 ```bash
-# 1. Install (dev environment — Pi-friendly Docker image is MVP-3)
+mkdir curbcam && cd curbcam
+curl -O https://raw.githubusercontent.com/PatientVibes/curbcam/main/docker-compose.yml
+docker compose up -d
+# then browse to http://curbcam.local:8080
+```
+
+Three commands. The image is multi-arch (Raspberry Pi arm64 + x86 amd64) and
+published to GHCR. On first launch every page redirects to the setup wizard
+(password → privacy notice → camera → align → calibrate).
+
+**Updating:** `docker compose pull && docker compose up -d`. The container runs
+database migrations automatically on boot, so upgrades are safe.
+
+**Cameras in Docker:** USB (`usb:0`), RTSP (`rtsp://…`), and file replay are
+supported. The Raspberry Pi Camera Module (picamera2) is not yet supported
+inside the Docker image — use a USB camera, or run curbcam natively, until that
+lands. Keep RTSP credentials in a gitignored `.env` (see `.env.example`) rather
+than in `curbcam.yaml`.
+
+## Develop from source
+
+```bash
 git clone https://github.com/PatientVibes/curbcam
 cd curbcam
 uv venv && uv pip install -e ".[dev]"
 
-# 2. Seed a calibration (one-time; MVP-2 replaces this with a web wizard)
+uv run curbcam serve            # http://localhost:8000  (mDNS on; --no-mdns to disable)
+```
+
+For detector-only work without the web UI:
+
+```bash
+# Seed a calibration (one-time; the web wizard is the normal path)
 uv run curbcam calibrate \
     --mm-per-px-l2r 41.3 --mm-per-px-r2l 41.5 \
     --reference-distance-mm 4700
 
-# 3. Run the detector against a camera or a directory of frames
+# Run the detector against a camera or a directory of frames
 uv run curbcam detect --camera usb:0
-# or
 uv run curbcam detect --camera rtsp://user:pw@cam.local/stream
-# or (dev / debugging)
 uv run curbcam detect --camera file:./fixtures/sample_run --once
 ```
 
 Events land in `./data/curbcam.sqlite`; thumbnails and full-frame JPEGs in
 `./media/`.
 
-## Run the web app (MVP-2)
-
-```bash
-uv run curbcam serve            # http://<pi-ip>:8000
-```
-
-On first launch every page redirects to a setup wizard:
+On first launch the web UI redirects to a setup wizard:
 
 1. Set a single admin password.
 2. Acknowledge the privacy notice (check your local laws — §15).
@@ -100,7 +116,7 @@ project's full stance.
 
 Inspired by [pageauc/speed-camera](https://github.com/pageauc/speed-camera),
 re-implemented from scratch with a focus on installability, wizard-driven
-setup, and a single Docker-based deployment path (MVP-3).
+setup, and a single Docker-based deployment path.
 
 ## License
 
