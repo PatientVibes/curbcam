@@ -15,7 +15,8 @@
 ## Ground rules (apply to EVERY task)
 
 1. **Never rename a §5.4 hook.** Preserve these exactly (style them freely, don't rename):
-   - ids: `#frame #cal-canvas #pixel-distance #result #capture #undo #reset #submit #distance #units #direction` · `#align-frame #align-canvas #align-result #overlay-toggle #save-crop` · `#event-list` (+`data-sse`,`data-units`) · `#tracking-pill` (+`.active`) · `#preview` · `#rows` · `#settings-form` · `#token-list` · `#camera-result` · `#setup-preview`
+   - ids: `#frame #cal-canvas #pixel-distance #result #capture #undo #reset #submit #distance #units #direction` · `#align-frame #align-canvas #align-result #overlay-toggle #save-crop` · `#event-list` (+`data-sse`,`data-units`) · `#tracking-pill` (+`.active`) · `#preview` · `#rows` · `#settings-form` · `#token-list` · `#camera-result` · `#setup-preview` · **`#setup-step`** (htmx swap unit shared by `password.html` form ↔ `configure.html` div — see §wizard note)
+   - **htmx swap-unit rule (`#setup-step`):** `password.html` is `<form id="setup-step" hx-post="/api/setup/password" hx-target="#setup-step" hx-swap="outerHTML">`; on submit it's replaced by `configure.html`'s `<div id="setup-step">`. **Everything for the password step (stepper, welcome card, input, submit) MUST live INSIDE `#setup-step`** — anything outside it persists on screen after the swap (→ a stale/duplicate stepper). Keep the form id, `hx-post`, `hx-target`, `hx-swap`, and the `<input type="password" name="password" required minlength="6">` verbatim.
    - classes JS queries: `form.filters`, `a.csv`, `.event-card .event-meta .speed .dir`, `.load-more`
    - elements: `<time datetime="…">` (filled by `app.js`)
    - htmx target ids referenced by `hx-target` in the same templates (`#rows #settings-form #token-list #camera-result`) — if renamed, rename both ends.
@@ -545,7 +546,7 @@ git commit -m "feat(ux): restyle Settings — fieldset cards, env badge, danger 
 
 ### Task 8: Wizard stepper + password/configure screens + preview onerror fix
 
-**Files:** Modify `src/curbcam/web/templates/setup/index.html`, `src/curbcam/web/templates/setup/configure.html`, `src/curbcam/web/static/app.css`; (and `setup/password.html` if it exists and is rendered — apply the same card treatment).
+**Files:** Modify `src/curbcam/web/templates/setup/password.html`, `src/curbcam/web/templates/setup/configure.html`, `src/curbcam/web/static/app.css`. **Leave `setup/index.html` unchanged** — it is only a dispatcher (`{% if need_password %} include password.html {% else %} include configure.html {% endif %}`); it owns no form/markup to restyle.
 
 - [ ] **Step 1: Add stepper + setup styles to `app.css`**
 
@@ -564,26 +565,23 @@ git commit -m "feat(ux): restyle Settings — fieldset cards, env badge, danger 
 .preview-frame .ph{position:absolute;color:var(--text-muted);font-size:var(--fs-1)}
 ```
 
-- [ ] **Step 2: Update `setup/index.html` (password / welcome)**
+- [ ] **Step 2: Restyle `setup/password.html` — stepper + card INSIDE the form**
 
-Wrap the password step in a centered card with a stepper. Preserve the existing form's action/markup (whatever `hx-post`/IDs it uses — do not change them; only wrap + class). Example structure (keep the real form fields from the current file):
+`password.html` IS the form, and it's the htmx swap unit (`#setup-step`, replaced outerHTML by `configure.html` on submit). So the stepper + welcome card must go **inside** the `<form id="setup-step">` (anything outside it would survive the swap and leave a stale stepper above the configure view). Keep the form attrs + input verbatim:
 
 ```html
-{% extends "base.html" %}
-{% block content %}
-<ol class="stepper">
-  <li class="current" data-n="1">Password</li><li data-n="2">Privacy</li>
-  <li data-n="3">Camera</li><li data-n="4">Align</li><li data-n="5">Calibrate</li>
-</ol>
-<div class="setup-card card">
+<form id="setup-step" class="setup-card card" hx-post="/api/setup/password" hx-target="#setup-step" hx-swap="outerHTML">
+  <ol class="stepper">
+    <li class="current" data-n="1">Password</li><li data-n="2">Privacy</li>
+    <li data-n="3">Camera</li><li data-n="4">Align</li><li data-n="5">Calibrate</li>
+  </ol>
   <h1>Welcome to curbcam</h1>
-  <p class="help">Set an admin password to begin. This is the only account.</p>
-  {# keep the existing password form exactly — its action/target/inputs are load-bearing #}
-  {% block setup_form %}{% endblock %}
-</div>
-{% endblock %}
+  <p class="help">Set an admin password to begin — it's the only account, used to reach the dashboard and settings.</p>
+  <input type="password" name="password" placeholder="Choose a password" required minlength="6">
+  <button type="submit" class="btn-primary">Set password</button>
+</form>
 ```
-NOTE: if `setup/index.html` currently inlines the password form, keep that form markup verbatim inside `.setup-card`; only add the wrapper + stepper. Don't rename inputs or the submit.
+(`setup/index.html` is untouched — it just includes this partial when `need_password`.)
 
 - [ ] **Step 3: Update `setup/configure.html` (steps 2–5) + preview onerror/retry**
 
@@ -611,7 +609,7 @@ Preserve `#ack`, the camera `<form hx-post="/api/setup/camera" hx-target="#camer
   <div class="preview-frame">
     <span class="ph">Starting camera…</span>
     <img id="setup-preview" src="/api/stream.mjpeg" alt="live preview"
-         onerror="this.dataset.tries=(+this.dataset.tries||0)+1; if(this.dataset.tries<20){var s=this.src;this.src='';setTimeout(()=>{this.src='/api/stream.mjpeg?_='+Date.now();},1500);}">
+         onerror="this.dataset.tries=(+this.dataset.tries||0)+1; if(this.dataset.tries<20){this.src='';setTimeout(()=>{this.src='/api/stream.mjpeg?_='+Date.now();},1500);}">
   </div>
 
   <h2>5 · Align &amp; calibrate</h2>
@@ -626,7 +624,7 @@ Fresh first-run (clear `_ux/data` + restart, or a new data dir): `/setup` shows 
 
 - [ ] **Step 5: Commit**
 ```bash
-git add src/curbcam/web/templates/setup/index.html src/curbcam/web/templates/setup/configure.html src/curbcam/web/static/app.css
+git add src/curbcam/web/templates/setup/password.html src/curbcam/web/templates/setup/configure.html src/curbcam/web/static/app.css
 git commit -m "feat(ux): wizard stepper + setup cards + self-healing live-preview (onerror retry)"
 ```
 
@@ -705,7 +703,7 @@ Preserve EVERY id (`#capture #frame #cal-canvas #pixel-distance #undo #reset #di
   <canvas id="cal-canvas"></canvas>
 </div>
 <div class="cal-controls" style="display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:end;margin-top:var(--sp-4)">
-  <span><strong id="pixel-distance">0 px</strong> measured</span>
+  <span><span id="pixel-distance">0 px</span> measured</span>  <!-- keep #pixel-distance a span (calibrate.js sets .textContent) -->
   <button id="undo">Undo point</button>
   <button id="reset">Start over</button>
   <label>Distance<br><input id="distance" type="number" step="0.01"></label>
