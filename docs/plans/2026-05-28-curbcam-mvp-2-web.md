@@ -134,7 +134,8 @@ class _FakeRunner:
     def run_in_background_thread(self):  # type: ignore[no-untyped-def]
         self.started += 1
         time.sleep(0.05)  # simulate a slow rebuild/start
-        return threading.current_thread()
+        # Return a real (un-started) Thread so callers that .join() won't break.
+        return threading.Thread(target=lambda: None)
 
     def stop(self, timeout: float = 5.0) -> None:
         self.stopped += 1
@@ -1968,9 +1969,11 @@ def test_query_orders_newest_first_and_paginates_by_cursor(repo: EventRepo) -> N
     assert [r.speed_kph for r in page2] == [35.0, 30.0]
 
 
-def test_delete_older_than(repo: EventRepo) -> None:
-    deleted = repo.delete_older_than(dt.datetime(2026, 5, 28, 12, 3, 0))
-    assert deleted == 3  # rows at minutes 0,1,2
+def test_delete_older_than_returns_media_paths(repo: EventRepo) -> None:
+    paths = repo.delete_older_than(dt.datetime(2026, 5, 28, 12, 3, 0))
+    # 3 rows deleted (minutes 0,1,2), each with image + thumb -> 6 paths.
+    assert len(paths) == 6
+    assert all(p.startswith(("events/", "thumbs/")) for p in paths)
     assert len(repo.query(EventFilter())) == 3
 ```
 
@@ -2036,13 +2039,20 @@ Add these methods to `EventRepo`:
                 )
             return q.order_by(Event.ts_utc.desc(), Event.id.desc()).limit(limit).all()
 
-    def delete_older_than(self, cutoff: dt.datetime) -> int:
+    def delete_older_than(self, cutoff: dt.datetime) -> list[str]:
+        """Delete event rows older than ``cutoff``; return the relative media
+        paths (image + thumb) of the deleted rows so the caller can unlink the
+        files. Rows are fetched (rather than bulk-deleted) precisely so the
+        media paths can be returned — the privacy "delete old events" button
+        must remove the JPEGs, not just the DB rows.
+        """
         with self._db.session() as s:
             rows = s.query(Event).filter(Event.ts_utc < cutoff).all()
+            paths = [p for r in rows for p in (r.image_path, r.thumb_path) if p]
             for r in rows:
                 s.delete(r)
             s.commit()
-            return len(rows)
+            return paths
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -3180,6 +3190,7 @@ Add imports:
 import datetime as dt
 
 from fastapi import Form, Response
+from markupsafe import escape
 ```
 
 Add routes:
@@ -3193,9 +3204,12 @@ def mint_token(
     sup: Supervisor = Depends(get_supervisor),
 ) -> HTMLResponse:
     token_id, raw_token = sup.auth.mint_stream_token(label)
+    # Escape the user-supplied label to prevent stored XSS (the admin is the
+    # only writer, but defense-in-depth is cheap). raw_token is server-minted.
+    safe_label = escape(label)
     # Show the raw token once; it is never retrievable again.
     html = (
-        f'<li data-token-id="{token_id}">{label} '
+        f'<li data-token-id="{token_id}">{safe_label} '
         f'<code class="token-once">{raw_token}</code> '
         f'<button hx-delete="/api/tokens/{token_id}" '
         f'hx-target="closest li" hx-swap="outerHTML">Revoke</button></li>'
@@ -3220,15 +3234,12 @@ def purge_events(
     sup: Supervisor = Depends(get_supervisor),
 ) -> Response:
     cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - dt.timedelta(days=days)
-    sup.events.delete_older_than(cutoff)
+    # Delete rows AND their media files — a privacy button that left the JPEGs
+    # on disk would defeat its purpose (spec §15).
+    for rel in sup.events.delete_older_than(cutoff):
+        (sup.media_root / rel).unlink(missing_ok=True)
     return Response(status_code=204)
 ```
-
-Note: `label` from the mint form is interpolated into HTML — the route returns
-it inside an `<li>`. Escape it (`markupsafe.escape`) before interpolation to
-avoid stored-XSS via a crafted label; the admin is the only writer, but
-defense-in-depth is cheap. Add `from markupsafe import escape` and wrap
-`escape(label)`.
 
 - [ ] **Step 4: Run tests**
 
