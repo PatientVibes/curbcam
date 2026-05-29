@@ -1,9 +1,11 @@
 """serve must start/stop the mDNS publisher around uvicorn and print the
 banner when mDNS is enabled, and skip the publisher entirely with --no-mdns.
 uvicorn.run is patched so no socket is bound."""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from typer.testing import CliRunner
 
@@ -14,7 +16,7 @@ runner = CliRunner()
 
 
 class _FakePublisher:
-    instances: list["_FakePublisher"] = []
+    instances: ClassVar[list[_FakePublisher]] = []
 
     def __init__(self, ip: str, port: int) -> None:
         self.ip = ip
@@ -41,8 +43,17 @@ def test_serve_starts_and_stops_publisher_and_prints_banner(tmp_path: Path, monk
     _patch(monkeypatch)
     result = runner.invoke(
         app,
-        ["serve", "--port", "8080", "--config", str(tmp_path / "c.yaml"),
-         "--data-dir", str(tmp_path / "data"), "--media-dir", str(tmp_path / "media")],
+        [
+            "serve",
+            "--port",
+            "8080",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert len(_FakePublisher.instances) == 1
@@ -57,8 +68,16 @@ def test_serve_no_mdns_skips_publisher(tmp_path: Path, monkeypatch) -> None:  # 
     _patch(monkeypatch)
     result = runner.invoke(
         app,
-        ["serve", "--no-mdns", "--config", str(tmp_path / "c.yaml"),
-         "--data-dir", str(tmp_path / "data"), "--media-dir", str(tmp_path / "media")],
+        [
+            "serve",
+            "--no-mdns",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert _FakePublisher.instances == []

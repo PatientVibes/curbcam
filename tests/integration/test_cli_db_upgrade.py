@@ -1,5 +1,6 @@
 """`db upgrade` runs alembic against the --data-dir sqlite and leaves it at
 head. Runs from the repo root so alembic.ini + migrations/ resolve."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -24,9 +25,7 @@ def test_db_upgrade_brings_fresh_db_to_head(tmp_path: Path) -> None:
         ver = con.execute("SELECT version_num FROM alembic_version").fetchone()
         tables = {
             r[0]
-            for r in con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
     finally:
         con.close()
