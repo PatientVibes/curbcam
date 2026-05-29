@@ -16,7 +16,7 @@ def repo(tmp_path: Path) -> EventRepo:
     for i in range(6):
         r.save(
             ts_utc=dt.datetime(2026, 5, 28, 12, i, 0),
-            speed_kph=20.0 + i * 5,           # 20,25,30,35,40,45
+            speed_kph=20.0 + i * 5,  # 20,25,30,35,40,45
             direction="L2R" if i % 2 == 0 else "R2L",
             frame_count=10,
             track_len_px=200,

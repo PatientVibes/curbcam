@@ -4,6 +4,7 @@ Rect is in SOURCE-frame coordinates (the JS scales display->source). On
 save: validate against the configured resolution, persist detector.crop,
 graceful restart.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

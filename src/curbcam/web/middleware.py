@@ -5,6 +5,7 @@ the setup/auth/calibration/crop/static surface is 303-redirected to
 /setup. The gate only controls redirection; per-route require_session
 still enforces authentication on protected endpoints.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -23,7 +24,9 @@ _EXEMPT_PREFIXES = (
 
 
 def _is_exempt(path: str) -> bool:
-    return any(path == p or path.startswith(p + "/") or path.startswith(p) for p in _EXEMPT_PREFIXES)
+    return any(
+        path == p or path.startswith(p + "/") or path.startswith(p) for p in _EXEMPT_PREFIXES
+    )
 
 
 async def first_run_gate(

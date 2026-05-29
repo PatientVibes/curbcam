@@ -3,6 +3,7 @@
 These avoid real cameras by patching the runner factory with a fake that
 records start/stop calls and simulates a slow rebuild.
 """
+
 from __future__ import annotations
 
 import threading

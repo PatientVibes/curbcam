@@ -1,4 +1,5 @@
 """Login/logout. /api/auth/login is the only fully public endpoint."""
+
 from __future__ import annotations
 
 import time

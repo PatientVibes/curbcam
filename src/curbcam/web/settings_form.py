@@ -4,6 +4,7 @@ Each descriptor carries label/help (from config.defaults.FIELD_LABELS), the
 current value, an input kind, and whether the field is shadowed by an env var
 (rendered read-only). crop is excluded — it is set by the alignment wizard.
 """
+
 from __future__ import annotations
 
 import os

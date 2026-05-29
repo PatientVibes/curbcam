@@ -2,6 +2,7 @@
 
 We patch uvicorn.run so the test doesn't actually bind a socket.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,11 +29,16 @@ def test_serve_builds_app_and_calls_uvicorn(tmp_path: Path, monkeypatch) -> None
         app,
         [
             "serve",
-            "--host", "127.0.0.1",
-            "--port", "9111",
-            "--config", str(tmp_path / "curbcam.yaml"),
-            "--data-dir", str(tmp_path / "data"),
-            "--media-dir", str(tmp_path / "media"),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "9111",
+            "--config",
+            str(tmp_path / "curbcam.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
         ],
     )
     assert result.exit_code == 0, result.output

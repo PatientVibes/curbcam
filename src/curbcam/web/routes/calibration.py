@@ -4,6 +4,7 @@ capture: freeze the current live frame as a JPEG for measurement. The
 frontend reads the source resolution from the returned image's
 naturalWidth/naturalHeight, so no separate dimensions payload is needed.
 """
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,7 @@ def measure(
 ) -> dict[str, object]:
     settings = sup.config_store.load()
     w, h = settings.camera.resolution
-    for (x, y) in body.points:
+    for x, y in body.points:
         if not (0 <= x <= w and 0 <= y <= h):
             raise HTTPException(status_code=422, detail="point out of frame bounds")
 

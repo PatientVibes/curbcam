@@ -1,4 +1,5 @@
 """Shared Jinja2 environment + template filters."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -118,9 +118,7 @@ class EventRepo:
                 q = q.filter(Event.direction == f.direction)
             if cursor is not None:
                 cts, cid = cursor
-                q = q.filter(
-                    or_(Event.ts_utc < cts, and_(Event.ts_utc == cts, Event.id < cid))
-                )
+                q = q.filter(or_(Event.ts_utc < cts, and_(Event.ts_utc == cts, Event.id < cid)))
             return q.order_by(Event.ts_utc.desc(), Event.id.desc()).limit(limit).all()
 
     def delete_older_than(self, cutoff: dt.datetime) -> list[str]:

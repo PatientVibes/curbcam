@@ -1,4 +1,5 @@
 """FastAPI dependencies + session cookie helpers."""
+
 from __future__ import annotations
 
 from fastapi import HTTPException, Query, Request, Response
@@ -20,9 +21,7 @@ def _serializer(sup: Supervisor) -> URLSafeTimedSerializer:
 
 def issue_session(sup: Supervisor, response: Response) -> None:
     token = _serializer(sup).dumps({"admin": True})
-    response.set_cookie(
-        SESSION_COOKIE, token, max_age=_MAX_AGE_S, httponly=True, samesite="lax"
-    )
+    response.set_cookie(SESSION_COOKIE, token, max_age=_MAX_AGE_S, httponly=True, samesite="lax")
 
 
 def clear_session(response: Response) -> None:

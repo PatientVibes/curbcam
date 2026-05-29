@@ -1,4 +1,5 @@
 """Event feed (SSE) + history/CSV (history + CSV added in Slice D)."""
+
 from __future__ import annotations
 
 import csv
@@ -72,14 +73,19 @@ def api_events(
 ) -> HTMLResponse:
     f, units = _parse_filter(sup, start, end, min_speed, max_speed, direction)
     rows = sup.events.query(f, cursor=_parse_cursor(cursor), limit=_PAGE)
-    next_cursor = (
-        f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == _PAGE else ""
-    )
+    next_cursor = f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == _PAGE else ""
     query = urlencode(
-        {k: v for k, v in {
-            "start": start, "end": end, "min_speed": min_speed,
-            "max_speed": max_speed, "direction": direction,
-        }.items() if v is not None}
+        {
+            k: v
+            for k, v in {
+                "start": start,
+                "end": end,
+                "min_speed": min_speed,
+                "max_speed": max_speed,
+                "direction": direction,
+            }.items()
+            if v is not None
+        }
     )
     return templates.TemplateResponse(
         request,
@@ -104,8 +110,16 @@ def api_events_csv(
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(
-            ["id", "ts_utc", "speed", "units", "direction",
-             "frame_count", "track_len_px", "image_path"]
+            [
+                "id",
+                "ts_utc",
+                "speed",
+                "units",
+                "direction",
+                "frame_count",
+                "track_len_px",
+                "image_path",
+            ]
         )
         yield buf.getvalue()
         buf.seek(0)
@@ -117,11 +131,18 @@ def api_events_csv(
             if not page:
                 break
             for e in page:
-                w.writerow([
-                    e.id, f"{e.ts_utc.isoformat()}Z",
-                    round(kph_to_display(float(e.speed_kph), units), 1), units,
-                    e.direction, e.frame_count, e.track_len_px, e.image_path,
-                ])
+                w.writerow(
+                    [
+                        e.id,
+                        f"{e.ts_utc.isoformat()}Z",
+                        round(kph_to_display(float(e.speed_kph), units), 1),
+                        units,
+                        e.direction,
+                        e.frame_count,
+                        e.track_len_px,
+                        e.image_path,
+                    ]
+                )
             yield buf.getvalue()
             buf.seek(0)
             buf.truncate(0)

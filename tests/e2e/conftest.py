@@ -1,4 +1,5 @@
 """A real uvicorn server in a background thread for browser tests."""
+
 from __future__ import annotations
 
 import socket
@@ -46,14 +47,20 @@ def live_server(tmp_path: Path) -> Iterator[tuple[str, Supervisor]]:
     ensure_schema(db)
     store = ConfigStore(tmp_path / "curbcam.yaml")
     s = store.load()
-    s = s.model_copy(update={"camera": s.camera.model_copy(
-        update={"source": f"file:{frames}", "resolution": (640, 480)})})
+    s = s.model_copy(
+        update={
+            "camera": s.camera.model_copy(
+                update={"source": f"file:{frames}", "resolution": (640, 480)}
+            )
+        }
+    )
     store.save(s)
     auth = AuthStore(tmp_path / "auth.json")
     auth.set_password("pw")
 
-    sup = Supervisor(config_store=store, db=db, bus=EventBus(),
-                     media_root=tmp_path / "media", auth_store=auth)
+    sup = Supervisor(
+        config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media", auth_store=auth
+    )
     app = create_app(sup)
     port = _free_port()
     server = _Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))

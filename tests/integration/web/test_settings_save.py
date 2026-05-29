@@ -42,7 +42,9 @@ def test_invalid_value_returns_422_with_inline_error(client, supervisor, monkeyp
     assert float(supervisor.config_store.load_raw()["camera"]["fps_target"]) > 0
 
 
-def test_malformed_resolution_returns_422_and_is_not_persisted(client, supervisor, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_malformed_resolution_returns_422_and_is_not_persisted(
+    client, supervisor, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
     # A malformed resolution must surface a validation error, not be silently
     # dropped while reporting a successful save.
     _configure(client, supervisor)
