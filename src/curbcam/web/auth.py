@@ -8,6 +8,7 @@ shown to the user once at mint time.
 from __future__ import annotations
 
 import json
+import os
 import secrets
 import uuid
 from pathlib import Path
@@ -26,11 +27,23 @@ class AuthStore:
     def _read(self) -> dict[str, Any]:
         if not self._path.exists():
             return {}
-        return json.loads(self._path.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(self._path.read_text(encoding="utf-8"))
+        return data
 
     def _write(self, data: dict[str, Any]) -> None:
+        # This file holds the session-signing secret_key plus password/token
+        # hashes, so it must never be world-readable. Create it owner-only
+        # (0o600). On POSIX this is enforced; on Windows the mode bits are
+        # largely advisory but the calls are harmless. os.open's mode only
+        # applies at creation, so chmod afterwards covers in-place rewrites.
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        fd = os.open(self._path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        try:
+            os.chmod(self._path, 0o600)
+        except OSError:  # pragma: no cover - non-POSIX best effort
+            pass
 
     # -- password --
     def has_password(self) -> bool:
@@ -60,7 +73,7 @@ class AuthStore:
             key = secrets.token_urlsafe(32)
             data["secret_key"] = key
             self._write(data)
-        return key  # type: ignore[no-any-return]
+        return str(key)
 
     # -- stream tokens --
     def mint_stream_token(self, label: str) -> tuple[str, str]:

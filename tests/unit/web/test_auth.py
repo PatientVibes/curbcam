@@ -1,4 +1,8 @@
+import os
+import stat
 from pathlib import Path
+
+import pytest
 
 from curbcam.web.auth import AuthStore
 
@@ -29,6 +33,14 @@ def test_secret_key_is_stable_across_instances(tmp_path: Path) -> None:
     key1 = s1.secret_key()
     key2 = AuthStore(path).secret_key()
     assert key1 == key2 and len(key1) >= 32
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file-mode bits only")
+def test_auth_file_is_owner_only(tmp_path: Path) -> None:
+    path = tmp_path / "auth.json"
+    AuthStore(path).set_password("x")
+    mode = stat.S_IMODE(path.stat().st_mode)
+    assert mode & (stat.S_IRWXG | stat.S_IRWXO) == 0  # no group/other access
 
 
 def test_mint_verify_and_revoke_stream_token(tmp_path: Path) -> None:
