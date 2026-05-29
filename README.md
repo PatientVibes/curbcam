@@ -24,11 +24,29 @@ published to GHCR. On first launch every page redirects to the setup wizard
 **Updating:** `docker compose pull && docker compose up -d`. The container runs
 database migrations automatically on boot, so upgrades are safe.
 
-**Cameras in Docker:** USB (`usb:0`), RTSP (`rtsp://…`), and file replay are
-supported. The Raspberry Pi Camera Module (picamera2) is not yet supported
-inside the Docker image — use a USB camera, or run curbcam natively, until that
-lands. Keep RTSP credentials in a gitignored `.env` (see `.env.example`) rather
-than in `curbcam.yaml`.
+**Cameras in Docker:** USB (`usb:0`), RTSP (`rtsp://…`), and file replay run on
+the standard multi-arch image. The **Raspberry Pi Camera Module** runs on a
+dedicated arm64 image — see below. Keep RTSP credentials in a gitignored `.env`
+(see `.env.example`) rather than in `curbcam.yaml`.
+
+### Raspberry Pi Camera Module
+
+The Pi Camera Module (libcamera/picamera2) runs on a dedicated **arm64-only**
+image, `ghcr.io/patientvibes/curbcam:picamera`, with its own compose file:
+
+```bash
+mkdir curbcam && cd curbcam
+curl -O https://raw.githubusercontent.com/PatientVibes/curbcam/main/docker-compose.picamera.yml
+docker compose -f docker-compose.picamera.yml up -d
+# browse to http://curbcam.local:8080
+```
+
+This image bases on Debian Trixie and installs libcamera + picamera2 from the
+Raspberry Pi apt archive. It runs `privileged: true` by default — the reliable
+path for camera-device access on a dedicated Pi; advanced users can switch to the
+scoped device list commented in the compose file. Requires 64-bit Raspberry Pi OS
+and `docker compose` (v2 — included with Docker CE; Debian's `docker.io` ships
+only Compose v1, so install the plugin there).
 
 ## Develop from source
 

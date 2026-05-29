@@ -37,6 +37,11 @@ beyond the install") and #4 ("reproducible on any laptop via Docker") made real.
 - Docs: README rewrite + design-spec sync.
 
 ### 2.2 Deferred (with rationale)
+> **Update (2026-05-29):** picamera2-in-Docker is **no longer deferred** — it ships as a dedicated
+> arm64 `:picamera` image (Debian Trixie / Python 3.13), hardware-validated on a Pi. See
+> `docs/specs/2026-05-29-curbcam-picamera2-docker.md`. The rationale below records why MVP-3 itself
+> deferred it.
+
 - **picamera2 (Pi Camera Module) inside Docker.** This is the design spec's §14
   "riskiest assembly," and it is genuinely unviable on the chosen base image:
   Debian Bookworm's apt `python3-picamera2` is compiled against the system
