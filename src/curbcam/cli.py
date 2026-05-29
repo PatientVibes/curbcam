@@ -14,6 +14,8 @@ import uvicorn
 
 from curbcam.camera.factory import camera_from_source
 from curbcam.config.store import ConfigStore
+from curbcam.discovery.mdns import MDNSPublisher
+from curbcam.discovery.net import detect_lan_ip
 from curbcam.pipeline.events import EventBus
 from curbcam.pipeline.runner import PipelineRunner
 from curbcam.storage.db import Database, ensure_schema
@@ -104,6 +106,7 @@ def serve(
     config: Path = typer.Option(Path("curbcam.yaml"), help="Path to YAML config"),
     data_dir: Path = typer.Option(Path("./data"), help="Directory for SQLite DB"),
     media_dir: Path = typer.Option(Path("./media"), help="Directory for event JPEGs"),
+    mdns: bool = typer.Option(True, "--mdns/--no-mdns", help="Advertise curbcam.local via mDNS"),
 ) -> None:
     """Run the web app: detector pipeline + UI in one process."""
     store = ConfigStore(config)
@@ -121,7 +124,19 @@ def serve(
         auth_store=AuthStore(data_dir / "auth.json"),
     )
     app_obj = create_app(supervisor)
-    uvicorn.run(app_obj, host=host, port=port)
+
+    publisher: MDNSPublisher | None = None
+    if mdns:
+        ip = detect_lan_ip()
+        publisher = MDNSPublisher(ip, port)
+        publisher.start()
+        typer.echo(f"Open http://curbcam.local:{port}   (or http://{ip}:{port})")
+
+    try:
+        uvicorn.run(app_obj, host=host, port=port)
+    finally:
+        if publisher is not None:
+            publisher.stop()
 
 
 @app.command()
