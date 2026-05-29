@@ -36,9 +36,16 @@ brand identity and a few cross-cutting fixes the review surfaced.
 - A theme toggle (small vanilla JS, persisted).
 
 ### 3.2 Non-goals (hard boundaries)
-- **No API/route/behavior changes.** This is a pure presentation layer: same endpoints, same htmx
-  interactions, same backend. (One exception is explicitly allowed: a minimal, behavior-preserving
-  template/JS change to fix the setup live-preview image — see §6.2.)
+- **No server-side API/route/pipeline/behavior changes.** Same endpoints, same htmx contract, same
+  backend, same wizard step *logic*.
+- **Client-side JS IS part of the presentation layer and WILL be edited** (this is a correction from an
+  earlier draft — "presentation-only" does *not* mean "don't touch JS"; see §5.4). Specifically: the
+  SSE event-card builder in `app.js` (it constructs cards via `createElement` and MUST stay structurally
+  identical to the restyled `event_card.html` partial — they are two render paths for the same card,
+  and are *already* slightly desynced today); the hardcoded canvas draw colors in `calibrate.js`/
+  `align.js` (must read theme colors from CSS variables); a new theme-init script; and the
+  `#tracking-pill` updater. What stays off-limits is **fetch/endpoint URLs, request/response shapes,
+  and the load-bearing DOM hooks listed in §5.4**.
 - **No new pages or flows**; restyle what exists.
 - **No SPA, no JS framework, no CSS framework, no build step.** All assets vendored (offline/LAN —
   the device often has no internet).
@@ -62,8 +69,10 @@ and a tiny theme-toggle script. No framework, no build step, all vendored.
   shadow/elevation, z-index, transitions.
 - `static/css/app.css` — component + layout styles built on the tokens (replaces today's single
   hand-rolled `app.css`).
-- `static/js/theme.js` — reads/sets `[data-theme]` on `<html>`, persists to `localStorage`, applied
-  before first paint (no flash). Vendored, ~20 lines.
+- **Theme init: a tiny BLOCKING inline `<script>` in `<head>`** (sets `[data-theme]` on `<html>` from
+  `localStorage`/`prefers-color-scheme` before first paint). It must be inline-and-blocking, NOT a
+  deferred file: `base.html:8-9` loads htmx + `app.js` with `defer`, which runs after paint and would
+  flash the wrong theme. The toggle *handler* (writing the choice back) can live in `app.js`.
 - `static/icons/` — favicon + app icon (SVG + a PNG fallback) and any inline-SVG sources.
 
 (Existing `align.js` / `calibrate.js` keep their behavior; only markup/classes they touch may change.)
@@ -84,6 +93,42 @@ App shell + top nav (wordmark, links, theme toggle); buttons (`.btn`, `.btn-prim
 (idle/tracking · fps); **wizard stepper** (1–5, current/done/upcoming); filter bar; table; empty-state
 and loading/skeleton blocks; badges (e.g. the "set via environment" indicator).
 
+### 5.4 Load-bearing JS hooks — DO NOT rename (verified against the code)
+
+The restyle changes classes/markup freely **except** the following, which `calibrate.js`, `align.js`,
+and `app.js` query by exact id/class/attribute. Renaming any of these silently breaks calibration, the
+alignment drag, the live preview, CSV export, local-time rendering, or the SSE feed. Preserve the
+ids/attrs (styling them is fine); if a rename is unavoidable, update the JS in the same change.
+
+- **Calibration (`calibrate.js`):** ids `#frame` (reference `<img>` — JS reads `naturalWidth`/
+  `clientWidth` to scale clicks to source pixels), `#cal-canvas` (must stay **exactly overlaid** on
+  `#frame`, sized to its `clientWidth`/`clientHeight` — see overlay rule below), `#pixel-distance`,
+  `#result`, `#capture`, `#undo`, `#reset`, `#submit`, `#distance`, `#units`, `#direction`.
+- **Alignment (`align.js`):** ids `#align-frame`, `#align-canvas` (same overlay rule), `#align-result`,
+  `#overlay-toggle`, `#save-crop`.
+- **Dashboard / SSE (`app.js`):** `#event-list` with its `data-sse` and `data-units` attributes;
+  `#tracking-pill` (JS sets `.textContent` and toggles the `.active` class — keep the id and `.active`).
+- **Events (`app.js`):** `form.filters` and the `a.csv` link inside it (CSV-link query-sync); all
+  server-rendered timestamps use `<time datetime="…">` with empty text that `app.js` fills with local
+  time — keep the `<time datetime>` element.
+
+**Two render paths for the event card (CRITICAL).** The card exists in BOTH
+`partials/event_card.html` (server/htmx) AND `app.js`'s SSE `createElement` builder. They must produce
+**structurally identical** markup so live-inserted cards match server-rendered ones. They are *already*
+slightly out of sync (the partial has `data-event-id` + `time.ts`; the JS card omits both) — the
+restyle must reconcile and keep them identical, editing the `app.js` builder whenever the partial
+changes. Shared classes today: `.event-card`, `.event-meta`, `.speed`, `.dir`.
+
+**Canvas overlay rule.** `#cal-canvas`/`#align-canvas` are absolutely positioned over their `<img>` and
+sized to the image's displayed box; clicks are mapped display→source via `naturalWidth/clientWidth`.
+The restyle must keep the canvas registered exactly over the image (same box, correct `z-index` so the
+canvas — not a new element — receives clicks). A z-index/overlap regression here silently kills
+calibration clicks.
+
+**Canvas theme colors.** `calibrate.js:21` (`fillStyle="red"`) and `align.js:25` (`strokeStyle="lime"`)
+are hardcoded and won't follow the theme. Read them from CSS custom properties (e.g. via
+`getComputedStyle`) so the overlay contrasts in both light and dark.
+
 ## 6. Per-screen restyle
 
 All changes are markup-class + CSS; Jinja structure and htmx attributes preserved unless noted.
@@ -96,9 +141,11 @@ container + spacing.
 ### 6.2 First-run wizard (`setup/*.html`)
 A real **1–5 stepper** showing progress; one focused step per view; a welcoming first screen (password)
 in a centered card; styled consent, camera-source, and links. **Fix the broken live-preview image**
-(§3.1): show a framed placeholder until the stream is live, handle the `<img>` error/`onerror`
-gracefully, and ensure the preview `<img>` is authorized (it currently renders broken during setup).
-This is the one allowed behavior touch — minimal and preserving the existing endpoints.
+(§3.1). Root cause (verified, NOT auth — the session is issued at password-set, `setup.py:30`): the
+camera pipeline restarts when the source is saved (`/api/setup/camera` → `sup.restart`, several
+seconds), so the `<img src="/api/stream.mjpeg">` can request the stream before frames exist and render
+broken. Fix is **client-side only**: a styled framed placeholder + an `onerror` handler that retries
+the stream after a short backoff (and a "starting camera…" state). No endpoint/auth change.
 
 ### 6.3 Calibration & alignment (`setup/calibrate.html`, `setup/align.html`)
 Lay the calibration controls in a clear vertical flow instead of one cramped line: capture → **on-frame
@@ -139,13 +186,23 @@ font). Follows existing template/static layout.
 
 ## 9. Testing
 
-- **No functional regression:** the existing Playwright e2e calibration smoke must still pass; the
-  wizard → calibrate → dashboard → SSE flow works unchanged (re-verifiable against a FileReplaySource
-  or a real webcam as in the 2026-05-29 session).
-- **Visual once-over:** screenshot each screen in light + dark + a mobile width (Playwright) and
-  eyeball against this spec.
-- **A11y spot-check:** keyboard-tab the wizard + settings; check focus visibility and contrast.
-- **Gates stay green:** ruff / mypy unaffected (no Python logic change); any new JS stays lint-clean.
+A passive "look at the screenshots" pass is **not** sufficient — the high-risk regressions (a
+z-index/overlay break that kills canvas clicks; a desynced SSE card) are invisible to a static look.
+Verification MUST include active, state-changing checks:
+
+- **Calibration & alignment, actively driven:** the existing Playwright e2e calibration smoke
+  (`tests/e2e/test_calibrate_smoke.py`) must still pass — it captures a frame and **clicks the canvas**
+  at known coords, so it catches an overlay/z-index regression. Also actively drag the alignment crop.
+  Re-verify the full wizard → calibrate → dashboard → SSE flow (FileReplaySource or a real webcam, as
+  in the 2026-05-29 session).
+- **SSE card parity (mandated):** trigger a live event and confirm the JS-inserted card (`app.js`
+  builder) is **visually identical** to the server-rendered `event_card.html` cards — the two-path
+  hazard from §5.4. Don't rely on an event happening to occur during a glance.
+- **Both themes:** screenshot each screen in light AND dark (+ a mobile width); verify the canvas
+  overlay colors (§5.4) contrast in both, and that there's no theme flash on load.
+- **A11y spot-check:** keyboard-tab the wizard + settings; visible focus rings; AA contrast both themes;
+  `aria-live` on the SSE feed + status pill.
+- **Gates stay green:** ruff / mypy unaffected (no Python change); any new/edited JS stays lint-clean.
 
 ## 10. Risks
 
