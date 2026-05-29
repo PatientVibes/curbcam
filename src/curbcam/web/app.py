@@ -13,7 +13,17 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from curbcam.web.routes import auth, debug, events, pages, settings, stream
+from curbcam.web.routes import (
+    auth,
+    calibration,
+    crop,
+    debug,
+    events,
+    pages,
+    settings,
+    setup,
+    stream,
+)
 from curbcam.web.supervisor import Supervisor
 
 
@@ -47,6 +57,9 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(stream.router)
     app.include_router(events.router)
     app.include_router(settings.router)
+    app.include_router(calibration.router)
+    app.include_router(crop.router)
+    app.include_router(setup.router)
 
     static_dir = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")

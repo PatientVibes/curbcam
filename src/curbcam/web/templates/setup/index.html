@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>curbcam setup</h1>
+{% if need_password %}
+  {% include "setup/password.html" %}
+{% else %}
+  {% include "setup/configure.html" %}
+{% endif %}
+{% endblock %}

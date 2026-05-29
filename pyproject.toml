@@ -50,8 +50,9 @@ packages = ["src/curbcam"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra --strict-markers --strict-config"
+addopts = "-ra --strict-markers --strict-config -m 'not e2e'"
 pythonpath = ["src"]
+markers = ["e2e: browser end-to-end tests (require playwright browsers)"]
 
 [tool.ruff]
 line-length = 100

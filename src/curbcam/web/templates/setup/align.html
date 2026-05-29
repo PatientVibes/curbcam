@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Alignment</h1>
+<p>Drag a rectangle over the area where vehicles pass. Toggle the overlay to see
+what the detector currently sees.</p>
+<label><input type="checkbox" id="overlay-toggle"> Show motion-detection overlay</label>
+<div class="canvas-wrap">
+  <img id="align-frame" src="/api/stream.mjpeg" alt="live preview">
+  <canvas id="align-canvas"></canvas>
+</div>
+<button id="save-crop" type="button">Save detection region</button>
+<a class="next" href="/setup/calibrate">Next: calibrate &raquo;</a>
+<p id="align-result" class="result"></p>
+<script src="/static/align.js" defer></script>
+{% endblock %}
