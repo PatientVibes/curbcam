@@ -40,3 +40,14 @@ def test_invalid_value_returns_422_with_inline_error(client, supervisor, monkeyp
     assert "field-error" in resp.text
     # Bad value was NOT persisted.
     assert float(supervisor.config_store.load_raw()["camera"]["fps_target"]) > 0
+
+
+def test_malformed_resolution_returns_422_and_is_not_persisted(client, supervisor, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    # A malformed resolution must surface a validation error, not be silently
+    # dropped while reporting a successful save.
+    _configure(client, supervisor)
+    monkeypatch.setattr(supervisor, "restart", lambda: None)
+    resp = client.post("/api/settings", data=_form(supervisor, resolution="abc"))
+    assert resp.status_code == 422
+    assert "field-error" in resp.text
+    assert supervisor.config_store.load_raw()["camera"]["resolution"] == [1280, 720]

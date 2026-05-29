@@ -46,9 +46,12 @@ async def save_settings(
     for key, value in form.items():
         if "." in key:
             try:
-                _set_nested(raw, key, _coerce(key, str(value)))
+                coerced = _coerce(key, str(value))
             except ValueError:
-                pass  # malformed resolution surfaces as a validation error below
+                # Keep the raw (invalid) input so Pydantic rejects it below —
+                # silently dropping it would falsely report a successful save.
+                coerced = str(value)
+            _set_nested(raw, key, coerced)
 
     try:
         Settings.model_validate(raw)
@@ -106,10 +109,12 @@ def revoke_token(
 
 @router.post("/api/events/purge")
 def purge_events(
-    days: int = Form(...),
+    days: int = Form(..., ge=1),
     _: None = Depends(require_session),
     sup: Supervisor = Depends(get_supervisor),
 ) -> Response:
+    # ge=1 is enforced server-side: days<=0 would push the cutoff to now/future
+    # and delete ALL events, not just old ones (the form's min=1 is client-only).
     cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - dt.timedelta(days=days)
     # Delete rows AND their media files — a privacy button that left the JPEGs
     # on disk would defeat its purpose (spec §15).
