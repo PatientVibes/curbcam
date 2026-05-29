@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-from curbcam.web.routes import auth, debug, events, stream
+from curbcam.web.routes import auth, debug, events, pages, stream
 from curbcam.web.supervisor import Supervisor
 
 
@@ -44,4 +46,12 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(debug.router)
     app.include_router(stream.router)
     app.include_router(events.router)
+
+    static_dir = Path(__file__).parent / "static"
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    # NB: media is NOT a StaticFiles mount — event images are private and are
+    # served by an auth-protected /media route in pages.py (spec §6). We still
+    # ensure the directory exists so FileResponse has a root to resolve against.
+    supervisor.media_root.mkdir(parents=True, exist_ok=True)
+    app.include_router(pages.router)
     return app

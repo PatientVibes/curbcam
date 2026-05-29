@@ -1,0 +1,16 @@
+:root { font-family: system-ui, sans-serif; }
+.nav { display: flex; gap: 1rem; padding: .75rem 1rem; background: #111; }
+.nav a { color: #eee; text-decoration: none; }
+.main { padding: 1rem; max-width: 980px; margin: 0 auto; }
+.preview { position: relative; }
+#preview { width: 100%; max-width: 640px; background: #000; border-radius: 8px; }
+.pill { position: absolute; top: 8px; left: 8px; background: #333; color: #fff;
+        padding: 2px 10px; border-radius: 999px; font-size: .8rem; }
+.pill.active { background: #1a7f37; }
+.event-list { display: grid; grid-template-columns: repeat(auto-fill, 320px); gap: 1rem; margin-top: 1rem; }
+.event-card { width: 320px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.event-card img { width: 100%; display: block; }
+.event-meta { display: flex; gap: .5rem; align-items: center; padding: .5rem; }
+.event-meta .speed { font-weight: 600; }
+.field-error { color: #b00020; font-size: .85rem; }
+.badge-env { background: #555; color: #fff; font-size: .7rem; padding: 1px 6px; border-radius: 4px; }

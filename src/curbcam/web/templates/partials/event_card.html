@@ -1,0 +1,10 @@
+<article class="event-card" data-event-id="{{ e.id }}">
+  <a href="/media/{{ e.image_path }}" target="_blank">
+    <img src="/media/{{ e.thumb_path }}" alt="event {{ e.id }}" loading="lazy">
+  </a>
+  <div class="event-meta">
+    <span class="speed">{{ e.speed_kph | speed(units) }}</span>
+    <span class="dir">{{ ">>" if e.direction == "L2R" else "<<" }}</span>
+    <time datetime="{{ e.ts_utc.isoformat() }}Z" class="ts"></time>
+  </div>
+</article>

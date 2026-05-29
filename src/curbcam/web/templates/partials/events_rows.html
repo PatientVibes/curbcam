@@ -1,0 +1,8 @@
+{% for e in events %}
+  {% include "partials/event_card.html" %}
+{% endfor %}
+{% if next_cursor %}
+<button class="load-more"
+        hx-get="/api/events?{{ query }}&cursor={{ next_cursor }}"
+        hx-target="this" hx-swap="outerHTML">Load more</button>
+{% endif %}
