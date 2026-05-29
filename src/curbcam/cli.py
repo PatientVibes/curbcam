@@ -11,6 +11,8 @@ from pathlib import Path
 
 import typer
 import uvicorn
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 
 from curbcam.camera.factory import camera_from_source
 from curbcam.config.store import ConfigStore
@@ -174,6 +176,23 @@ def db_init(data_dir: Path = typer.Option(Path("./data"))) -> None:
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
     ensure_schema(db)
     typer.echo(f"Schema initialised at {data_dir / 'curbcam.sqlite'}")
+
+
+@db_app.command("upgrade")
+def db_upgrade(data_dir: Path = typer.Option(Path("./data"))) -> None:
+    """Run all pending Alembic migrations against the data-dir database.
+
+    Used by the container entrypoint on every boot so `docker compose pull`
+    of a newer image migrates an existing install to head (spec §6).
+    `alembic.ini`'s relative sqlalchemy.url is overridden so --data-dir is
+    the single source of truth for the DB location.
+    """
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db_path = data_dir / "curbcam.sqlite"
+    cfg = AlembicConfig("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+    alembic_command.upgrade(cfg, "head")
+    typer.echo(f"Database at {db_path} upgraded to head.")
 
 
 def main() -> None:  # pragma: no cover
