@@ -105,6 +105,38 @@ class Supervisor:
         # Notify connected UIs after releasing the lock.
         self._bus.publish_threadsafe(EventEnvelope(kind="settings_changed", payload={}))
 
+    # -- live-frame tap delegation (runner owns the slots) --
+    def add_viewer(self) -> None:
+        r = self._runner
+        if r is not None:
+            r.add_viewer()
+
+    def remove_viewer(self) -> None:
+        r = self._runner
+        if r is not None:
+            r.remove_viewer()
+
+    def set_overlay(self, on: bool) -> None:
+        r = self._runner
+        if r is not None:
+            r.set_overlay(on)
+
+    def latest_annotated(self) -> bytes | None:
+        r = self._runner
+        return r.latest_annotated() if r is not None else None
+
+    def capture_still(self) -> tuple[bytes, int, int] | None:
+        r = self._runner
+        return r.capture_still() if r is not None else None
+
     def stats(self) -> dict[str, object]:
         uptime = 0.0 if self._started_at is None else time.monotonic() - self._started_at
-        return {"uptime_s": round(uptime, 1), "running": self._runner is not None}
+        out: dict[str, object] = {"uptime_s": round(uptime, 1), "running": self._runner is not None}
+        r = self._runner
+        if r is not None:
+            out.update(r.stats())
+        return out
+
+    def publish_stats(self) -> None:
+        """Publish a stats envelope (call from inside the asyncio loop)."""
+        self._bus.publish(EventEnvelope(kind="stats", payload=self.stats()))

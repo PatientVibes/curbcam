@@ -17,6 +17,7 @@ import threading
 import time
 
 import cv2
+import numpy as np
 
 from curbcam.camera.base import Camera
 from curbcam.config.schema import Settings
@@ -24,6 +25,7 @@ from curbcam.detector.calibration import Calibration as CalDC
 from curbcam.detector.calibration import speed_from_track
 from curbcam.detector.motion import find_motion
 from curbcam.detector.tracker import Tracker
+from curbcam.detector.types import Detection
 from curbcam.pipeline.events import EventBus, EventEnvelope
 from curbcam.storage.db import Database
 from curbcam.storage.media import MediaWriter
@@ -31,6 +33,13 @@ from curbcam.storage.models import Event
 from curbcam.storage.repositories import CalibrationRepo
 
 log = logging.getLogger(__name__)
+
+# Cap live-preview JPEG encoding well below typical camera rates: the MJPEG
+# endpoint only serves ~5 fps, so encoding every frame of a 30 fps camera
+# would burn CPU in the detection loop (and starve tracking) on Pi-class
+# hardware for no visible benefit. The full BGR frame is still cached every
+# tick, so capture_still stays current.
+_PREVIEW_MIN_ENCODE_INTERVAL_S = 0.1  # ≤10 encodes/sec
 
 
 class PipelineRunner:
@@ -58,6 +67,85 @@ class PipelineRunner:
             min_track_frames=settings.detector.min_track_frames,
         )
 
+        # -- live preview / stats tap (MVP-2) --
+        self._frame_lock = threading.Lock()
+        self._latest_annotated_jpeg: bytes | None = None
+        self._latest_full_bgr: np.ndarray | None = None
+        self._last_detections: list[Detection] = []
+        self._viewers = 0
+        self._overlay = False
+        self._fps_ema = 0.0
+        self._last_mono: float | None = None
+        self._last_encode_mono: float | None = None
+        self._tracking = False
+
+    # -- live-frame tap API (MVP-2) --
+    def add_viewer(self) -> None:
+        with self._frame_lock:
+            self._viewers += 1
+
+    def remove_viewer(self) -> None:
+        with self._frame_lock:
+            self._viewers = max(0, self._viewers - 1)
+
+    def set_overlay(self, on: bool) -> None:
+        with self._frame_lock:
+            self._overlay = on
+
+    def latest_annotated(self) -> bytes | None:
+        with self._frame_lock:
+            return self._latest_annotated_jpeg
+
+    def capture_still(self) -> tuple[bytes, int, int] | None:
+        with self._frame_lock:
+            frame = None if self._latest_full_bgr is None else self._latest_full_bgr.copy()
+        if frame is None:
+            return None
+        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        if not ok:
+            return None
+        h, w = frame.shape[:2]
+        return bytes(buf), int(w), int(h)
+
+    def stats(self) -> dict[str, object]:
+        with self._frame_lock:
+            return {
+                "fps": round(self._fps_ema, 1),
+                "tracking": self._tracking,
+                "viewers": self._viewers,
+            }
+
+    def _tap_frame(self, frame_bgr, mono_ts: float) -> None:  # type: ignore[no-untyped-def]
+        with self._frame_lock:
+            self._latest_full_bgr = frame_bgr
+            if self._last_mono is not None:
+                dt = mono_ts - self._last_mono
+                if dt > 0:
+                    inst = 1.0 / dt
+                    self._fps_ema = inst if self._fps_ema == 0 else 0.9 * self._fps_ema + 0.1 * inst
+            self._last_mono = mono_ts
+            want = self._viewers > 0 or self._overlay
+            # Rate-limit encoding independent of camera fps (Codex review).
+            if want and self._last_encode_mono is not None:
+                if mono_ts - self._last_encode_mono < _PREVIEW_MIN_ENCODE_INTERVAL_S:
+                    want = False
+            if want:
+                self._last_encode_mono = mono_ts
+            overlay = self._overlay
+            dets = list(self._last_detections)
+        if not want:
+            return
+        preview = frame_bgr
+        if overlay and dets:
+            preview = frame_bgr.copy()
+            for d in dets:
+                x, y, w, h = d.bbox
+                cv2.rectangle(preview, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        ok, buf = cv2.imencode(".jpg", preview, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if ok:
+            with self._frame_lock:
+                self._latest_annotated_jpeg = bytes(buf)
+
     def run_until_camera_exhausted(self) -> None:
         self._camera.open()
         try:
@@ -69,6 +157,7 @@ class PipelineRunner:
                 if got is None:
                     break
                 frame_bgr, ts = got
+                self._tap_frame(frame_bgr, ts)
                 curr_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
                 if prev_gray is not None:
                     # Finalized tracks come from update() — they were last
@@ -154,6 +243,9 @@ class PipelineRunner:
             crop=self._settings.detector.crop,
             frame_ts=frame_ts,
         )
+        with self._frame_lock:
+            self._last_detections = detections
+            self._tracking = bool(detections)
         finalised = self._tracker.update(detections)
         for track in finalised:
             self._persist_track(track, prev_frame_bgr)
