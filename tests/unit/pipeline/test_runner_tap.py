@@ -65,3 +65,17 @@ def test_stats_report_fps_after_run(tmp_path: Path) -> None:
     r.run_until_camera_exhausted()
     s = r.stats()
     assert s["fps"] >= 0.0 and "tracking" in s and "viewers" in s
+
+
+def test_preview_encode_is_rate_limited(tmp_path: Path) -> None:
+    # With a viewer connected, frames arriving faster than the encode interval
+    # must NOT each trigger a JPEG encode (Codex P2: don't encode at camera fps).
+    r = _runner(tmp_path)
+    r.add_viewer()
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    r._tap_frame(frame, 0.0)  # first frame always encodes
+    assert r._last_encode_mono == 0.0
+    r._tap_frame(frame, 0.05)  # within 0.1s window -> skipped
+    assert r._last_encode_mono == 0.0
+    r._tap_frame(frame, 0.2)  # >=0.1s since last encode -> encodes
+    assert r._last_encode_mono == 0.2

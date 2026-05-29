@@ -34,6 +34,13 @@ from curbcam.storage.repositories import CalibrationRepo
 
 log = logging.getLogger(__name__)
 
+# Cap live-preview JPEG encoding well below typical camera rates: the MJPEG
+# endpoint only serves ~5 fps, so encoding every frame of a 30 fps camera
+# would burn CPU in the detection loop (and starve tracking) on Pi-class
+# hardware for no visible benefit. The full BGR frame is still cached every
+# tick, so capture_still stays current.
+_PREVIEW_MIN_ENCODE_INTERVAL_S = 0.1  # ≤10 encodes/sec
+
 
 class PipelineRunner:
     def __init__(
@@ -69,6 +76,7 @@ class PipelineRunner:
         self._overlay = False
         self._fps_ema = 0.0
         self._last_mono: float | None = None
+        self._last_encode_mono: float | None = None
         self._tracking = False
 
     # -- live-frame tap API (MVP-2) --
@@ -117,6 +125,12 @@ class PipelineRunner:
                     self._fps_ema = inst if self._fps_ema == 0 else 0.9 * self._fps_ema + 0.1 * inst
             self._last_mono = mono_ts
             want = self._viewers > 0 or self._overlay
+            # Rate-limit encoding independent of camera fps (Codex review).
+            if want and self._last_encode_mono is not None:
+                if mono_ts - self._last_encode_mono < _PREVIEW_MIN_ENCODE_INTERVAL_S:
+                    want = False
+            if want:
+                self._last_encode_mono = mono_ts
             overlay = self._overlay
             dets = list(self._last_detections)
         if not want:
