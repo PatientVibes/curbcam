@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 import typer
+import uvicorn
 
 from curbcam.camera.factory import camera_from_source
 from curbcam.config.store import ConfigStore
@@ -18,6 +19,8 @@ from curbcam.pipeline.runner import PipelineRunner
 from curbcam.storage.db import Database, ensure_schema
 from curbcam.storage.media import MediaWriter
 from curbcam.storage.repositories import CalibrationRepo
+from curbcam.web.app import create_app
+from curbcam.web.supervisor import Supervisor
 
 app = typer.Typer(help="curbcam — speed camera CLI", no_args_is_help=True)
 
@@ -91,6 +94,29 @@ def detect(
             thread.join(timeout=0.5)
     except KeyboardInterrupt:
         runner.stop()
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Bind address"),
+    port: int = typer.Option(8000, help="Bind port"),
+    config: Path = typer.Option(Path("curbcam.yaml"), help="Path to YAML config"),
+    data_dir: Path = typer.Option(Path("./data"), help="Directory for SQLite DB"),
+    media_dir: Path = typer.Option(Path("./media"), help="Directory for event JPEGs"),
+) -> None:
+    """Run the web app: detector pipeline + UI in one process."""
+    store = ConfigStore(config)
+    settings = store.load()
+    _setup_logging(settings.server.log_level)
+
+    db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
+    ensure_schema(db)
+
+    supervisor = Supervisor(
+        config_store=store, db=db, bus=EventBus(), media_root=media_dir
+    )
+    app_obj = create_app(supervisor)
+    uvicorn.run(app_obj, host=host, port=port)
 
 
 @app.command()
