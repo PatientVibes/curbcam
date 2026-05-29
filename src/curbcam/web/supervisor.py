@@ -102,6 +102,6 @@ class Supervisor:
         # Notify connected UIs after releasing the lock.
         self._bus.publish_threadsafe(EventEnvelope(kind="settings_changed", payload={}))
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, object]:
         uptime = 0.0 if self._started_at is None else time.monotonic() - self._started_at
         return {"uptime_s": round(uptime, 1), "running": self._runner is not None}

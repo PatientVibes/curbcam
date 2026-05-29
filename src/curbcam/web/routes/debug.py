@@ -10,5 +10,5 @@ router = APIRouter()
 
 
 @router.get("/api/debug/stats")
-def debug_stats(sup: Supervisor = Depends(get_supervisor)) -> dict:
+def debug_stats(sup: Supervisor = Depends(get_supervisor)) -> dict[str, object]:
     return sup.stats()

@@ -66,7 +66,10 @@ def test_concurrent_restarts_are_serialized(tmp_path: Path) -> None:
 
     t1 = threading.Thread(target=fire)
     t2 = threading.Thread(target=fire)
-    t1.start(); t2.start(); t1.join(); t2.join()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 
     # 1 start + 2 restarts = 3 runners built; each prior runner stopped exactly once.
     assert len(fakes) == 3
