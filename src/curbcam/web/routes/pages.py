@@ -78,3 +78,11 @@ def settings_page(
         "settings.html",
         {"groups": build_groups(raw), "tokens": sup.auth.list_stream_tokens(), "saved": False},
     )
+
+
+@router.get("/setup/calibrate", response_class=HTMLResponse)
+def calibrate_wizard(
+    request: Request,
+    _: None = Depends(require_session),
+) -> HTMLResponse:
+    return templates.TemplateResponse(request, "setup/calibrate.html", {})
