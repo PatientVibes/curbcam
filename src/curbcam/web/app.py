@@ -27,6 +27,11 @@ def create_app(supervisor: Supervisor) -> FastAPI:
 
     app = FastAPI(title="curbcam", lifespan=lifespan)
     app.state.supervisor = supervisor
+
+    from curbcam.web.middleware import first_run_gate
+
+    app.middleware("http")(first_run_gate)
+
     app.include_router(auth.router)
     app.include_router(debug.router)
     return app
