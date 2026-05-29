@@ -81,3 +81,27 @@ def test_serve_no_mdns_skips_publisher(tmp_path: Path, monkeypatch) -> None:  # 
     )
     assert result.exit_code == 0, result.output
     assert _FakePublisher.instances == []
+
+
+def test_serve_stops_publisher_even_when_uvicorn_raises(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    _patch(monkeypatch)
+
+    def _boom(*_a, **_k) -> None:
+        raise RuntimeError("bind failed")
+
+    monkeypatch.setattr(cli_mod.uvicorn, "run", _boom)
+    result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
+    )
+    assert result.exit_code != 0
+    assert len(_FakePublisher.instances) == 1
+    assert _FakePublisher.instances[0].stopped == 1
