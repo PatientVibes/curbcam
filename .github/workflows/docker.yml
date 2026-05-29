@@ -26,11 +26,28 @@ jobs:
           load: true
           tags: curbcam:smoke
           platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Smoke test the image
         run: |
           set -euo pipefail
           mkdir -p smoke/data smoke/media smoke/frames
+          # Seed one valid PNG (pure stdlib) so the file-replay pipeline thread
+          # opens cleanly instead of crash-looping on an empty dir.
+          python3 - <<'PY'
+          import struct, zlib
+          def chunk(typ, data):
+              body = typ + data
+              return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xffffffff)
+          w = h = 16
+          raw = b"".join(b"\x00" + b"\x80" * (w * 3) for _ in range(h))  # filter byte + RGB row
+          png = b"\x89PNG\r\n\x1a\n"
+          png += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))  # 8-bit RGB
+          png += chunk(b"IDAT", zlib.compress(raw))
+          png += chunk(b"IEND", b"")
+          open("smoke/frames/frame.png", "wb").write(png)
+          PY
           docker run -d --name curbcam-smoke \
             -p 8080:8080 \
             -v "$PWD/smoke/data:/data" \
@@ -97,3 +114,4 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
