@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from curbcam.config.store import ConfigStore
 
 
