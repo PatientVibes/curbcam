@@ -15,14 +15,22 @@ from curbcam.web.routes import auth, debug
 from curbcam.web.supervisor import Supervisor
 
 
+async def _stats_loop(supervisor: Supervisor) -> None:
+    while True:
+        await asyncio.sleep(1.0)
+        supervisor.publish_stats()
+
+
 def create_app(supervisor: Supervisor) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         supervisor.bus.bind_loop(asyncio.get_running_loop())
         supervisor.start()
+        stats_task = asyncio.create_task(_stats_loop(supervisor))
         try:
             yield
         finally:
+            stats_task.cancel()
             supervisor.stop()
 
     app = FastAPI(title="curbcam", lifespan=lifespan)
