@@ -20,6 +20,7 @@ _EXEMPT_PREFIXES = (
     "/api/calibration",
     "/api/crop",
     "/static",
+    "/healthz",
 )
 
 
