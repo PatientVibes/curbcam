@@ -78,21 +78,25 @@ class ConfigStore:
     def __init__(self, path: Path) -> None:
         self._path = path
 
+    @staticmethod
+    def _defaults_without_env() -> Settings:
+        """Construct Settings from field defaults ONLY, ignoring CURBCAM_* env
+        vars, so first-run/raw defaults never leak env-only credentials (e.g.
+        CURBCAM_CAMERA__SOURCE=rtsp://user:pw@...) into the on-disk YAML."""
+        env_snapshot = {k: v for k, v in os.environ.items() if k.startswith("CURBCAM_")}
+        try:
+            for k in env_snapshot:
+                del os.environ[k]
+            return Settings()
+        finally:
+            os.environ.update(env_snapshot)
+
     def load(self) -> Settings:
         if not self._path.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            # Write pure defaults WITHOUT env overlay so first-run does not
-            # leak env-only credentials (e.g. CURBCAM_CAMERA__SOURCE=rtsp://
-            # user:pw@...) into the on-disk YAML. Restore env afterwards and
-            # return an env-overlaid Settings for the caller.
-            env_snapshot = {k: v for k, v in os.environ.items() if k.startswith("CURBCAM_")}
-            try:
-                for k in env_snapshot:
-                    del os.environ[k]
-                defaults = Settings()
-            finally:
-                os.environ.update(env_snapshot)
-            self._write_yaml(defaults.model_dump(mode="json"))
+            # Write pure defaults WITHOUT env overlay (see _defaults_without_env),
+            # then return an env-overlaid Settings for the caller.
+            self._write_yaml(self._defaults_without_env().model_dump(mode="json"))
             return Settings()
 
         with self._path.open("r", encoding="utf-8") as f:
@@ -102,6 +106,22 @@ class ConfigStore:
 
     def save(self, settings: Settings) -> None:
         self._write_yaml(settings.model_dump(mode="json"))
+
+    def load_raw(self) -> dict[str, Any]:
+        """Return the YAML dict as-on-disk, WITHOUT env-var overlay.
+
+        Used by the settings UI so saving never bakes an env-shadowed
+        value into the file (spec §5). Returns defaults if the file is
+        absent.
+        """
+        if not self._path.exists():
+            return self._defaults_without_env().model_dump(mode="json")
+        with self._path.open("r", encoding="utf-8") as f:
+            data: dict[str, Any] = yaml.safe_load(f) or {}
+            return data
+
+    def save_raw(self, data: dict[str, Any]) -> None:
+        self._write_yaml(data)
 
     def _write_yaml(self, data: dict[str, Any]) -> None:
         with self._path.open("w", encoding="utf-8") as f:

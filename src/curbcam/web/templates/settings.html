@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Settings</h1>
+{% include "partials/settings_form.html" %}
+
+<section class="integrations">
+  <h2>Integrations — stream tokens</h2>
+  <form hx-post="/api/tokens" hx-target="#token-list" hx-swap="afterbegin">
+    <input name="label" placeholder="e.g. Home Assistant" required>
+    <button type="submit">Mint token</button>
+  </form>
+  <ul id="token-list">
+    {% for t in tokens %}<li data-token-id="{{ t.id }}">{{ t.label }}
+      <button hx-delete="/api/tokens/{{ t.id }}" hx-target="closest li" hx-swap="outerHTML">Revoke</button></li>{% endfor %}
+  </ul>
+</section>
+
+<section class="danger">
+  <h2>Delete old events</h2>
+  <form hx-post="/api/events/purge" hx-confirm="Delete events older than the given days?">
+    <input type="number" name="days" value="30" min="1">
+    <button type="submit">Delete</button>
+  </form>
+</section>
+{% endblock %}
