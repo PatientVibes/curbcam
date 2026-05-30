@@ -108,3 +108,17 @@ legend{font-weight:600;color:var(--text-muted);padding:0 var(--sp-2)}
 section.danger{border:1px solid var(--danger);border-radius:var(--radius);padding:var(--sp-4) var(--sp-5);margin-top:var(--sp-6)}
 section.danger h2{color:var(--danger);margin-top:0}
 @media (max-width:560px){.setting{grid-template-columns:1fr}.setting small.help,.setting .badge-env,.setting .field-error{grid-column:1}}
+
+/* ── Setup wizard (stepper + cards + preview) ────────────────── */
+.stepper{display:flex;gap:var(--sp-2);list-style:none;padding:0;margin:0 0 var(--sp-5);flex-wrap:wrap}
+.stepper li{display:flex;align-items:center;gap:var(--sp-2);color:var(--text-muted);font-size:var(--fs-1)}
+.stepper li::before{content:attr(data-n);display:grid;place-items:center;width:1.6rem;height:1.6rem;
+  border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:var(--fs-0)}
+.stepper li.done::before{background:var(--accent);color:var(--on-accent);content:"✓"}
+.stepper li.current{color:var(--text);font-weight:600}
+.stepper li.current::before{background:var(--accent);color:var(--on-accent)}
+.setup-card{max-width:520px;margin:var(--sp-6) auto}
+.preview-frame{position:relative;max-width:640px;background:var(--surface-3);border-radius:var(--radius);
+  aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden}
+.preview-frame img{width:100%;display:block}
+.preview-frame .ph{position:absolute;color:var(--text-muted);font-size:var(--fs-1)}
