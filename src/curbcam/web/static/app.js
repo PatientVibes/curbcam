@@ -10,6 +10,18 @@ function renderTimes(root) {
 document.addEventListener("DOMContentLoaded", () => {
   renderTimes(document);
 
+  // Theme toggle: cycle saved theme; blocking head script applies it on load.
+  const themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme")
+        || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("curbcam-theme", next); } catch (e) {}
+    });
+  }
+
   // htmx swaps in events_rows.html with empty <time> elements (filter + Load
   // more); re-render local times on every swap so paginated/filtered rows
   // aren't left blank. renderTimes skips already-filled elements, so this is

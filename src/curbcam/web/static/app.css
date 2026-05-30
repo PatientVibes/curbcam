@@ -1,21 +1,58 @@
-:root { font-family: system-ui, sans-serif; }
-.nav { display: flex; gap: 1rem; padding: .75rem 1rem; background: #111; }
-.nav a { color: #eee; text-decoration: none; }
-.main { padding: 1rem; max-width: 980px; margin: 0 auto; }
-.preview { position: relative; }
-#preview { width: 100%; max-width: 640px; background: #000; border-radius: 8px; }
-.pill { position: absolute; top: 8px; left: 8px; background: #333; color: #fff;
-        padding: 2px 10px; border-radius: 999px; font-size: .8rem; }
-.pill.active { background: #1a7f37; }
-.event-list { display: grid; grid-template-columns: repeat(auto-fill, 320px); gap: 1rem; margin-top: 1rem; }
-.event-card { width: 320px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-.event-card img { width: 100%; display: block; }
-.event-meta { display: flex; gap: .5rem; align-items: center; padding: .5rem; }
-.event-meta .speed { font-weight: 600; }
-.field-error { color: #b00020; font-size: .85rem; }
-.badge-env { background: #555; color: #fff; font-size: .7rem; padding: 1px 6px; border-radius: 4px; }
-/* Wizard point-picking: the canvas must overlay the frame, not sit below it,
-   so clicks map to image pixels (calibrate + align wizards). */
-.canvas-wrap { position: relative; display: inline-block; max-width: 640px; }
-.canvas-wrap img { display: block; width: 100%; }
-.canvas-wrap canvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
+/* ── Design tokens ───────────────────────────────────────────── */
+:root {
+  /* surfaces & text (light) */
+  --surface-0:#f6f7f9; --surface-1:#fff; --surface-2:#eef1f4; --surface-3:#e3e7ec;
+  --text:#16191d; --text-muted:#5b636e; --border:#d6dbe1;
+  /* brand "radar" accent */
+  --accent:#0a7d5a; --accent-hover:#0c9069; --on-accent:#fff;
+  /* semantics */
+  --ok:#1a7f37; --warn:#b7791f; --danger:#c2410c; --danger-bg:#fff1ec;
+  --dir:#0a6cff;
+  /* type */
+  --font: system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --fs-0:.8rem; --fs-1:.9rem; --fs-2:1rem; --fs-3:1.25rem; --fs-4:1.6rem; --fs-speed:2rem;
+  /* space / radius / shadow / motion */
+  --sp-1:.25rem; --sp-2:.5rem; --sp-3:.75rem; --sp-4:1rem; --sp-5:1.5rem; --sp-6:2rem;
+  --radius:10px; --radius-pill:999px;
+  --shadow:0 1px 2px rgba(16,25,40,.06),0 2px 8px rgba(16,25,40,.08);
+  --tr:.15s ease;
+}
+:root[data-theme="dark"]{
+  --surface-0:#0f1216; --surface-1:#161a20; --surface-2:#1d222a; --surface-3:#262d37;
+  --text:#e7ebf0; --text-muted:#9aa4b1; --border:#2a313b;
+  --accent:#1fb888; --accent-hover:#27d29c; --on-accent:#06231a;
+  --danger:#f0743f; --danger-bg:#2a1812; --dir:#5aa2ff;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.45);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --surface-0:#0f1216; --surface-1:#161a20; --surface-2:#1d222a; --surface-3:#262d37;
+    --text:#e7ebf0; --text-muted:#9aa4b1; --border:#2a313b;
+    --accent:#1fb888; --accent-hover:#27d29c; --on-accent:#06231a;
+    --danger:#f0743f; --danger-bg:#2a1812; --dir:#5aa2ff;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.45);
+  }
+}
+
+/* ── Base ────────────────────────────────────────────────────── */
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);color:var(--text);background:var(--surface-0);font-size:var(--fs-2);line-height:1.5}
+h1{font-size:var(--fs-4);margin:0 0 var(--sp-4)} h2{font-size:var(--fs-3);margin:var(--sp-5) 0 var(--sp-3)}
+a{color:var(--accent)}
+
+/* ── App shell + nav ─────────────────────────────────────────── */
+.nav{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-4);
+  background:var(--surface-1);border-bottom:1px solid var(--border)}
+.nav .brand{font-weight:700;letter-spacing:-.01em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:var(--sp-2)}
+.nav .brand .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+.nav a:not(.brand){color:var(--text-muted);text-decoration:none;padding:var(--sp-1) var(--sp-2);border-radius:6px}
+.nav a:not(.brand):hover{color:var(--text);background:var(--surface-2)}
+.nav .spacer{margin-left:auto}
+.theme-toggle{background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--radius-pill);padding:var(--sp-1) var(--sp-3);cursor:pointer;font-size:var(--fs-1)}
+.main{padding:var(--sp-5) var(--sp-4);max-width:1040px;margin:0 auto}
+
+/* ── Canvas overlay (calibrate/align) — keep exactly (spec §5.4) ─ */
+.canvas-wrap{position:relative;display:inline-block;max-width:640px}
+.canvas-wrap img{display:block;width:100%;border-radius:var(--radius)}
+.canvas-wrap canvas{position:absolute;top:0;left:0;cursor:crosshair}
