@@ -63,7 +63,7 @@ button,.btn{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(-
 button:hover,.btn:hover{background:var(--surface-3)}
 .btn-primary,button[type="submit"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .btn-primary:hover,button[type="submit"]:hover{background:var(--accent-hover)}
-.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-danger,button.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
 
 /* ── Form controls ───────────────────────────────────────────── */
 input,select{font:inherit;color:var(--text);background:var(--surface-1);border:1px solid var(--border);
