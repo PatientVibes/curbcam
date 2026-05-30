@@ -96,3 +96,15 @@ label{color:var(--text)} small.help{display:block;color:var(--text-muted);font-s
 /* ── Empty / loading states ──────────────────────────────────── */
 .empty{color:var(--text-muted);text-align:center;padding:var(--sp-6);border:1px dashed var(--border);border-radius:var(--radius)}
 .load-more{display:block;margin:var(--sp-4) auto 0}
+
+/* ── Settings ────────────────────────────────────────────────── */
+fieldset{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-1);
+  padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-4)}
+legend{font-weight:600;color:var(--text-muted);padding:0 var(--sp-2)}
+.setting{display:grid;grid-template-columns:200px 1fr;gap:var(--sp-2) var(--sp-4);align-items:center;margin-bottom:var(--sp-3)}
+.setting small.help{grid-column:2} .setting .badge-env{grid-column:2;justify-self:start}
+.setting .field-error{grid-column:2}
+.saved-ok{color:var(--ok);margin-left:var(--sp-3)}
+section.danger{border:1px solid var(--danger);border-radius:var(--radius);padding:var(--sp-4) var(--sp-5);margin-top:var(--sp-6)}
+section.danger h2{color:var(--danger);margin-top:0}
+@media (max-width:560px){.setting{grid-template-columns:1fr}.setting small.help,.setting .badge-env,.setting .field-error{grid-column:1}}
