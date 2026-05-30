@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %} · Settings{% endblock %}
 {% block content %}
 <h1>Settings</h1>
 {% include "partials/settings_form.html" %}
@@ -19,7 +20,7 @@
   <h2>Delete old events</h2>
   <form hx-post="/api/events/purge" hx-confirm="Delete events older than the given days?">
     <input type="number" name="days" value="30" min="1">
-    <button type="submit">Delete</button>
+    <button type="submit" class="btn-danger">Delete</button>
   </form>
 </section>
 {% endblock %}

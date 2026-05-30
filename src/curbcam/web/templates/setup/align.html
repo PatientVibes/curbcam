@@ -1,15 +1,19 @@
 {% extends "base.html" %}
+{% block title %} · Align{% endblock %}
 {% block content %}
-<h1>Alignment</h1>
-<p>Drag a rectangle over the area where vehicles pass. Toggle the overlay to see
-what the detector currently sees.</p>
+<h1>Set detection region</h1>
+<ol class="stepper"><li class="done" data-n="1">Password</li><li class="done" data-n="2">Privacy</li>
+  <li class="done" data-n="3">Camera</li><li class="current" data-n="4">Align</li><li data-n="5">Calibrate</li></ol>
+<p>Drag a rectangle over the area where vehicles pass. Toggle the overlay to see what the detector currently sees.</p>
 <label><input type="checkbox" id="overlay-toggle"> Show motion-detection overlay</label>
-<div class="canvas-wrap">
+<div class="canvas-wrap card" style="padding:0;margin-top:var(--sp-4)">
   <img id="align-frame" src="/api/stream.mjpeg" alt="live preview">
   <canvas id="align-canvas"></canvas>
 </div>
-<button id="save-crop" type="button">Save detection region</button>
-<a class="next" href="/setup/calibrate">Next: calibrate &raquo;</a>
-<p id="align-result" class="result"></p>
+<div style="display:flex;gap:var(--sp-3);align-items:center;margin-top:var(--sp-4)">
+  <button id="save-crop" type="button" class="btn-primary">Save detection region</button>
+  <a class="next btn" href="/setup/calibrate">Next: calibrate »</a>
+</div>
+<p id="align-result" class="help"></p>
 <script src="/static/align.js" defer></script>
 {% endblock %}

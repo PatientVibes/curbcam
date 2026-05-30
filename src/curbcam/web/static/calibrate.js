@@ -8,6 +8,8 @@
   const pixelOut = document.getElementById("pixel-distance");
   const result = document.getElementById("result");
   let points = []; // SOURCE-coordinate points
+  const cssVar = (name, fallback) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
   function scale() {
     // naturalWidth is the SOURCE width of the captured JPEG.
@@ -17,8 +19,9 @@
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const s = scale();
-    ctx.fillStyle = "red";
-    ctx.strokeStyle = "red";
+    const mark = cssVar("--accent", "#0a7d5a");
+    ctx.fillStyle = mark;
+    ctx.strokeStyle = mark;
     ctx.lineWidth = 2;
     points.forEach((p) => {
       ctx.beginPath();
