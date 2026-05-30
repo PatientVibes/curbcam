@@ -1,13 +1,16 @@
 {% extends "base.html" %}
+{% block title %} · Dashboard{% endblock %}
 {% block content %}
-<section class="preview">
-  <img id="preview" src="/api/stream.mjpeg" alt="live preview">
+<section class="preview card" style="padding:0;overflow:hidden;position:relative;max-width:720px">
+  <img id="preview" src="/api/stream.mjpeg" alt="live preview" style="display:block;width:100%;background:#000">
   <span id="tracking-pill" class="pill">idle</span>
 </section>
-<section id="event-list" class="event-list"
-         data-sse="/api/events/stream" data-units="{{ units }}">
+<h2>Recent events</h2>
+<section id="event-list" class="event-list" data-sse="/api/events/stream" data-units="{{ units }}" data-cap="24">
   {% for e in events %}
     {% include "partials/event_card.html" %}
+  {% else %}
+    <p class="empty">No events yet — point the camera at the road and they'll appear here live.</p>
   {% endfor %}
 </section>
 {% endblock %}

@@ -4,15 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>curbcam{% block title %}{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/app.css">
+  <script>
+    /* Blocking, pre-paint: set theme from saved choice (falls back to OS pref). */
+    (function(){try{var t=localStorage.getItem("curbcam-theme");
+      if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+  </script>
   <script src="/static/vendor/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
   <nav class="nav">
+    <a href="/" class="brand"><span class="dot"></span>curbcam</a>
     <a href="/">Dashboard</a>
     <a href="/events">Events</a>
     <a href="/settings">Settings</a>
+    <span class="spacer"></span>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">◑</button>
   </nav>
   <main class="main">{% block content %}{% endblock %}</main>
 </body>

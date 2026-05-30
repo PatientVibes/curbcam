@@ -10,6 +10,18 @@ function renderTimes(root) {
 document.addEventListener("DOMContentLoaded", () => {
   renderTimes(document);
 
+  // Theme toggle: cycle saved theme; blocking head script applies it on load.
+  const themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme")
+        || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("curbcam-theme", next); } catch (e) {}
+    });
+  }
+
   // htmx swaps in events_rows.html with empty <time> elements (filter + Load
   // more); re-render local times on every swap so paginated/filtered rows
   // aren't left blank. renderTimes skips already-filled elements, so this is
@@ -35,6 +47,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const list = document.getElementById("event-list");
+  if (list) list.setAttribute("aria-live", "polite");
+  const pillEl = document.getElementById("tracking-pill");
+  if (pillEl) pillEl.setAttribute("aria-live", "polite");
   if (list && list.dataset.sse) {
     const units = list.dataset.units || "kph";
     const es = new EventSource(list.dataset.sse);
@@ -43,19 +58,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const speed = units === "mph"
         ? (ev.speed_kph / 1.609344).toFixed(1)
         : ev.speed_kph.toFixed(1);
-      const arrow = ev.direction === "L2R" ? ">>" : "<<";
+      const l2r = ev.direction === "L2R";
 
-      // Build via DOM APIs (textContent / property assignment) rather than
-      // innerHTML so event fields can never inject markup.
       const card = document.createElement("article");
       card.className = "event-card";
+      card.dataset.eventId = ev.id;
 
       const link = document.createElement("a");
       link.href = `/media/${ev.image_path}`;
       link.target = "_blank";
+      link.rel = "noopener";
       const img = document.createElement("img");
       img.src = `/media/${ev.thumb_path}`;
       img.alt = `event ${ev.id}`;
+      img.loading = "lazy";
       link.appendChild(img);
 
       const meta = document.createElement("div");
@@ -65,14 +81,19 @@ document.addEventListener("DOMContentLoaded", () => {
       speedEl.textContent = `${speed} ${units}`;
       const dirEl = document.createElement("span");
       dirEl.className = "dir";
-      dirEl.textContent = arrow;
+      dirEl.setAttribute("aria-label", l2r ? "left to right" : "right to left");
+      dirEl.textContent = l2r ? ">>" : "<<";
       const timeEl = document.createElement("time");
+      timeEl.className = "ts";
       timeEl.setAttribute("datetime", `${ev.ts_utc}Z`);
       meta.append(speedEl, dirEl, timeEl);
 
       card.append(link, meta);
       list.prepend(card);
       renderTimes(card);
+      // Keep the dashboard list from growing unbounded (spec §6.4).
+      const cap = parseInt(list.dataset.cap || "0", 10);
+      if (cap > 0) while (list.children.length > cap) list.lastElementChild.remove();
     });
     es.addEventListener("stats", (m) => {
       const s = JSON.parse(m.data);
