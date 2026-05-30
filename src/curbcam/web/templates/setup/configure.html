@@ -19,7 +19,7 @@
   <div class="preview-frame">
     <span class="ph">Starting camera…</span>
     <img id="setup-preview" src="/api/stream.mjpeg" alt="live preview"
-         onerror="this.dataset.tries=(+this.dataset.tries||0)+1; if(this.dataset.tries<20){this.src='';setTimeout(()=>{this.src='/api/stream.mjpeg?_='+Date.now();},1500);}">
+         onerror="if(this.getAttribute('src')){this.dataset.tries=(+this.dataset.tries||0)+1; if(this.dataset.tries<20){this.src='';setTimeout(()=>{this.src='/api/stream.mjpeg?_='+Date.now();},1500);}}">
   </div>
 
   <h2>5 · Align &amp; calibrate</h2>
