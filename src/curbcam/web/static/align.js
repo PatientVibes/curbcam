@@ -7,6 +7,8 @@
   const result = document.getElementById("align-result");
   let start = null;
   let rect = null; // SOURCE coords [x0,y0,x1,y1]
+  const cssVar = (name, fallback) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
   function scale() { return frame.naturalWidth / frame.clientWidth; }
 
@@ -22,7 +24,7 @@
   function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!rect) return;
-    ctx.strokeStyle = "lime";
+    ctx.strokeStyle = cssVar("--accent", "#0a7d5a");
     ctx.lineWidth = 2;
     ctx.strokeRect(toDisp(rect[0]), toDisp(rect[1]),
                    toDisp(rect[2] - rect[0]), toDisp(rect[3] - rect[1]));
