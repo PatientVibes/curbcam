@@ -118,6 +118,10 @@ jobs:
 
   picamera-build-check:
     name: picamera arm64 build-check
+    # PRs (gate the chain) and v* tags (so picamera-release's `needs` is
+    # satisfiable); skip plain main-branch pushes — the ~10-min emulated arm64
+    # build there is wasted work.
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
