@@ -56,3 +56,43 @@ a{color:var(--accent)}
 .canvas-wrap{position:relative;display:inline-block;max-width:640px}
 .canvas-wrap img{display:block;width:100%;border-radius:var(--radius)}
 .canvas-wrap canvas{position:absolute;top:0;left:0;cursor:crosshair}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+button,.btn{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);padding:var(--sp-2) var(--sp-4);transition:background var(--tr)}
+button:hover,.btn:hover{background:var(--surface-3)}
+.btn-primary,button[type="submit"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn-primary:hover,button[type="submit"]:hover{background:var(--accent-hover)}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+
+/* ── Form controls ───────────────────────────────────────────── */
+input,select{font:inherit;color:var(--text);background:var(--surface-1);border:1px solid var(--border);
+  border-radius:8px;padding:var(--sp-2) var(--sp-3)}
+input:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label{color:var(--text)} small.help{display:block;color:var(--text-muted);font-size:var(--fs-1)}
+.field-error{color:var(--danger);font-size:var(--fs-1)}
+.badge-env{background:var(--surface-3);color:var(--text-muted);font-size:var(--fs-0);
+  padding:1px 8px;border-radius:6px;border:1px solid var(--border)}
+
+/* ── Card ────────────────────────────────────────────────────── */
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:var(--sp-5)}
+
+/* ── Status pill ─────────────────────────────────────────────── */
+.pill{position:absolute;top:var(--sp-2);left:var(--sp-2);background:rgba(0,0,0,.6);color:#fff;
+  padding:2px 10px;border-radius:var(--radius-pill);font-size:var(--fs-0);backdrop-filter:blur(4px)}
+.pill.active{background:var(--accent);color:var(--on-accent)}
+
+/* ── Event grid + card ───────────────────────────────────────── */
+.event-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--sp-4);margin-top:var(--sp-5)}
+.event-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow)}
+.event-card img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;background:var(--surface-3)}
+.event-meta{display:flex;align-items:baseline;gap:var(--sp-2);padding:var(--sp-3)}
+.event-meta .speed{font-size:var(--fs-speed);font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.event-meta .dir{color:var(--dir);font-weight:700}
+.event-meta time{margin-left:auto;color:var(--text-muted);font-size:var(--fs-1)}
+
+/* ── Empty / loading states ──────────────────────────────────── */
+.empty{color:var(--text-muted);text-align:center;padding:var(--sp-6);border:1px dashed var(--border);border-radius:var(--radius)}
+.load-more{display:block;margin:var(--sp-4) auto 0}
