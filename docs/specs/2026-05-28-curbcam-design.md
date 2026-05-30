@@ -537,10 +537,10 @@ Three commands.
 
 ### 13.2 Deferred to v0.2+
 
-- **picamera2 inside Docker** — Debian Bookworm's apt `python3-picamera2`
-  targets Python 3.11 while the image base is CPython 3.12 (ABI mismatch);
-  supported in-container cameras are USB/RTSP/file and the Pi Camera Module
-  remains native-only for now. See `docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md` §2.2.
+- **picamera2 inside Docker** — ~~deferred~~ **SHIPPED** as a dedicated arm64
+  `:picamera` image (Debian Trixie + distro Python 3.13 + the RPi apt libcamera
+  stack), hardware-validated on a Pi. The standard multi-arch image still covers
+  USB/RTSP/file. See `docs/specs/2026-05-29-curbcam-picamera2-docker.md`.
 - Alerts (webhook, MQTT, ntfy on threshold) — clean to add, pipeline events
   are already pub-sub
 - Graphs page / Reports tab
@@ -565,11 +565,13 @@ Three commands.
 
 ## 14. Risks
 
-- **picamera2 + Docker on Pi 5 is the riskiest assembly.** Mitigated by
-  pinning the install README to Raspberry Pi OS Bookworm or newer. In MVP-3
-  this is deferred — picamera2 is not yet supported inside the Docker image
-  due to a Python 3.11/3.12 ABI mismatch (§13.2); USB/RTSP cameras are the
-  supported Docker path.
+- **picamera2 + Docker on Pi 5 is the riskiest assembly.** Resolved in the
+  `:picamera` follow-up by basing that image on Debian Trixie (distro Python
+  3.13) so it matches the RPi apt libcamera/picamera2 ABI, sourcing the whole
+  numpy-linked C-stack from apt, and asserting `import numpy, cv2, picamera2,
+  libcamera` at build time. Hardware-validated on a Pi (Trixie/aarch64). See
+  `docs/specs/2026-05-29-curbcam-picamera2-docker.md`; USB/RTSP remain the
+  standard-image path.
 - **Detector parity with upstream is not guaranteed.** A synthetic-frame
   regression suite catches the obvious cases but cannot replicate every
   edge case upstream has tuned for over years. Documented as

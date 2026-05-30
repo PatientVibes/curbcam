@@ -1,0 +1,31 @@
+# Raspberry Pi Camera Module install. Uses the arm64-only :picamera image.
+# Usage: docker compose -f docker-compose.picamera.yml up -d
+services:
+  curbcam:
+    image: ghcr.io/patientvibes/curbcam:picamera
+    restart: unless-stopped
+    # REQUIRED: mDNS multicast (curbcam.local) cannot cross the Docker bridge
+    # NAT, so the container shares the host network (publishes 8080 directly).
+    network_mode: host
+    init: true
+    # RECOMMENDED for the Pi Camera Module: libcamera enumerates many device
+    # nodes; privileged is the reliable, supported path on a dedicated Pi.
+    privileged: true
+    volumes:
+      - ./data:/data
+      - ./media:/media
+      - /run/udev:/run/udev:ro
+    # Least-privilege ALTERNATIVE to `privileged: true` (advanced users):
+    # comment out `privileged: true` above and uncomment the block below. This
+    # is best-effort and may need adjustment per Pi model / kernel.
+    # devices:
+    #   - /dev/dma_heap:/dev/dma_heap
+    #   - /dev/vchiq:/dev/vchiq
+    #   - /dev/vcsm-cma:/dev/vcsm-cma
+    #   - /dev/video0:/dev/video0
+    #   # (libcamera may need additional /dev/video* and /dev/media* nodes)
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - TZ=America/Los_Angeles

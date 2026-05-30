@@ -1,0 +1,78 @@
+# syntax=docker/dockerfile:1
+# Raspberry Pi Camera Module (picamera2) image — arm64 ONLY.
+# The Raspberry Pi apt archive has no amd64 packages, so this image cannot
+# build for amd64. See docs/specs/2026-05-29-curbcam-picamera2-docker.md.
+
+# ---- builder: wheel + a pure-Python-only requirements list ----
+FROM debian:trixie-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /build
+COPY pyproject.toml README.md uv.lock ./
+COPY src ./src
+# Build the (pure-Python) curbcam wheel.
+RUN uv build --wheel --out-dir /wheels
+# Export the LOCKED runtime dependency closure from uv.lock (reproducible —
+# pinned to the same versions developers/CI use, NOT re-resolved from
+# pyproject's loose constraints), then strip the two C-extension packages that
+# MUST instead come from apt (numpy, opencv) so they share the apt
+# libcamera/picamera2 numpy ABI. --no-hashes keeps each entry a single
+# `pkg==ver` line so the sed strip is safe; --no-emit-project excludes curbcam
+# itself (installed separately as the wheel, --no-deps); --no-dev drops dev
+# tooling. opencv-python-headless's only dependency is numpy, so removing both
+# lines leaves no orphaned transitive deps.
+RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /wheels/requirements.txt \
+    && sed -i -E '/^(numpy|opencv-python-headless)([=<>!~; ]|$)/d' /wheels/requirements.txt
+
+# ---- runtime: debian:trixie (distro python3 == 3.13) + RPi libcamera stack ----
+FROM debian:trixie-slim AS runtime
+# Add the Raspberry Pi apt archive (libcamera 0.7 with the Pi camera pipeline;
+# Debian's own libcamera 0.4 lacks it), then install the entire numpy-linked
+# C-extension stack from apt so it shares one consistent ABI.
+#
+# We vendor the OFFICIAL Raspberry Pi archive keyring (the re-signed key with a
+# SHA512 self-binding signature, as shipped by the `raspberrypi-archive-keyring`
+# package). The legacy https://archive.raspberrypi.org/debian/raspberrypi.gpg.key
+# URL still serves the OLD key whose self-signature uses SHA1, which Debian
+# Trixie's sequoia/sqv verifier rejects as of 2026-02-01 ("repository is not
+# signed"). Using the re-signed keyring keeps full apt signature verification on
+# (NOT `trusted=yes`) — this is exactly what Raspberry Pi OS itself does. See
+# docs/specs/2026-05-29-curbcam-picamera2-docker.md §4.2.
+COPY docker/raspberrypi-archive-keyring.pgp /usr/share/keyrings/raspberrypi-archive-keyring.pgp
+RUN echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.pgp] http://archive.raspberrypi.com/debian trixie main" \
+        > /etc/apt/sources.list.d/raspberrypi.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3 python3-venv \
+        python3-picamera2 python3-opencv python3-kms++ libcamera-ipa \
+        libglib2.0-0 libgomp1 tini \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# A venv that can see the apt-installed numpy/opencv/picamera2/libcamera.
+RUN python3 -m venv --system-site-packages /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Install curbcam's pure-Python deps (numpy/opencv stripped) + curbcam itself
+# (--no-deps so the wheel's numpy/opencv requirements are not pulled from PyPI).
+COPY --from=builder /wheels/ /tmp/wheels/
+RUN uv pip install --python /venv/bin/python -r /tmp/wheels/requirements.txt \
+    && uv pip install --python /venv/bin/python --no-deps /tmp/wheels/curbcam-*.whl \
+    && rm -rf /tmp/wheels
+
+# Build-time ABI assertion: the whole image is invalid if these do not import
+# together on one numpy ABI. Fails the build, not the user's Pi.
+RUN /venv/bin/python -c "import numpy, cv2, picamera2, libcamera; print('numpy', numpy.__version__)"
+
+# Alembic config + migrations + entrypoint (reused from MVP-3, unchanged).
+WORKDIR /app
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status == 200 else 1)"
+
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
