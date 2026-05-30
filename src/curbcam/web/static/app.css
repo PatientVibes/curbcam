@@ -122,3 +122,11 @@ section.danger h2{color:var(--danger);margin-top:0}
   aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden}
 .preview-frame img{width:100%;display:block}
 .preview-frame .ph{position:absolute;color:var(--text-muted);font-size:var(--fs-1)}
+
+@media (max-width:600px){
+  .main{padding:var(--sp-4) var(--sp-3)}
+  .nav{gap:var(--sp-2)} .nav a:not(.brand){padding:var(--sp-1)}
+  .event-list{grid-template-columns:1fr 1fr}
+}
+@media (max-width:400px){.event-list{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

@@ -47,6 +47,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const list = document.getElementById("event-list");
+  if (list) list.setAttribute("aria-live", "polite");
+  const pillEl = document.getElementById("tracking-pill");
+  if (pillEl) pillEl.setAttribute("aria-live", "polite");
   if (list && list.dataset.sse) {
     const units = list.dataset.units || "kph";
     const es = new EventSource(list.dataset.sse);
