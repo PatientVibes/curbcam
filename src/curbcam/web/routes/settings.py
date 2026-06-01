@@ -15,6 +15,7 @@ from markupsafe import escape
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from curbcam.camera.discovery import discover_cameras
 from curbcam.config.schema import Settings
 from curbcam.web.deps import get_supervisor, require_session
 from curbcam.web.settings_form import build_groups
@@ -75,6 +76,17 @@ async def save_settings(
         "partials/settings_form.html",
         {"groups": build_groups(raw), "saved": True},
     )
+
+
+@router.get("/api/cameras", response_class=HTMLResponse)
+async def list_cameras(
+    request: Request,
+    _: None = Depends(require_session),
+) -> HTMLResponse:
+    # Auto-detected cameras as <option>s for the settings camera-source datalist.
+    # Discovery probes hardware (ioctls, picamera2) — run off the event loop.
+    cameras = await run_in_threadpool(discover_cameras)
+    return templates.TemplateResponse(request, "partials/camera_options.html", {"cameras": cameras})
 
 
 @router.post("/api/tokens", response_class=HTMLResponse)
