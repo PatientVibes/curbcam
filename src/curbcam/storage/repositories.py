@@ -157,7 +157,9 @@ class EventRepo:
             s.commit()
             return paths
 
-    def _speeds_since(self, start: dt.datetime | None, direction: str | None = None) -> list[float]:
+    def speeds_since(self, start: dt.datetime | None, direction: str | None = None) -> list[float]:
+        """Sorted kph speeds in the window. Public so the reports view-model can
+        bucket the histogram in display units (mph/kph) rather than raw kph."""
         with self._db.session() as s:
             q = s.query(Event.speed_kph)
             if start is not None:
@@ -167,7 +169,7 @@ class EventRepo:
             return sorted(float(r[0]) for r in q.all())
 
     def summary(self, start: dt.datetime | None) -> ReportSummary:
-        speeds = self._speeds_since(start)
+        speeds = self.speeds_since(start)
         if not speeds:
             return ReportSummary(0, 0.0, 0.0, 0.0)
         return ReportSummary(
@@ -176,13 +178,6 @@ class EventRepo:
             p85_kph=_percentile(speeds, 85),
             max_kph=speeds[-1],
         )
-
-    def speed_histogram(self, start: dt.datetime | None, bin_kph: float) -> dict[int, int]:
-        out: dict[int, int] = {}
-        for v in self._speeds_since(start):
-            b = int(v // bin_kph) * int(bin_kph)
-            out[b] = out.get(b, 0) + 1
-        return out
 
     def by_hour(self, start: dt.datetime | None) -> list[int]:
         with self._db.session() as s:
@@ -203,6 +198,6 @@ class EventRepo:
     def by_direction(self, start: dt.datetime | None) -> dict[str, tuple[int, float]]:
         out: dict[str, tuple[int, float]] = {}
         for direction in ("L2R", "R2L"):
-            speeds = self._speeds_since(start, direction)
+            speeds = self.speeds_since(start, direction)
             out[direction] = (len(speeds), _percentile(speeds, 50) if speeds else 0.0)
         return out

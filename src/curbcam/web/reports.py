@@ -9,7 +9,7 @@ from curbcam.web.supervisor import Supervisor
 from curbcam.web.units import kph_to_display
 
 WINDOWS = ("today", "7d", "30d", "all")
-_BIN_KPH = 5.0
+_BIN_DISPLAY = 5  # histogram bucket width, in the user's display units (5 mph / 5 kph)
 
 
 def window_start(window: str, now: dt.datetime) -> dt.datetime | None:
@@ -26,6 +26,31 @@ def _now_utc() -> dt.datetime:
     return dt.datetime.now(dt.UTC).replace(tzinfo=None)
 
 
+def _fill_daily(
+    present: list[tuple[str, int]], start: dt.datetime | None, today: dt.date
+) -> list[tuple[str, int]]:
+    """Expand per-day counts to one entry per calendar day across the window.
+
+    ``daily_counts`` only returns days that HAVE events, so plotting them
+    directly spaces sparse days evenly and visually hides multi-day gaps. Filling
+    the zero-event days makes the trend's x-axis reflect real elapsed time.
+    """
+    counts = {d: n for d, n in present}
+    if start is not None:
+        span_start = start.date()
+    elif present:
+        span_start = dt.date.fromisoformat(present[0][0])
+    else:
+        return []
+    out: list[tuple[str, int]] = []
+    day = span_start
+    while day <= today:
+        key = day.isoformat()
+        out.append((key, counts.get(key, 0)))
+        day += dt.timedelta(days=1)
+    return out
+
+
 def build_context(sup: Supervisor, window: str) -> dict[str, Any]:
     if window not in WINDOWS:
         window = "7d"
@@ -34,19 +59,23 @@ def build_context(sup: Supervisor, window: str) -> dict[str, Any]:
     repo = sup.events
 
     summary = repo.summary(start)
-    bins = repo.speed_histogram(start, _BIN_KPH)
     by_hour = repo.by_hour(start)
-    daily = repo.daily_counts(start)
+    daily = _fill_daily(repo.daily_counts(start), start, _now_utc().date())
     by_dir = repo.by_direction(start)
 
     def disp(kph: float) -> float:
         return round(kph_to_display(kph, units), 1)
 
-    # Histogram bars (display-unit bucket labels, % heights for inline SVG).
+    # Histogram: bucket in the user's DISPLAY units so mph users get round 5-mph
+    # bins, not 5-kph bins relabeled into uneven mph (spec §5.3).
+    bins: dict[int, int] = {}
+    for kph in repo.speeds_since(start):
+        lo = int(kph_to_display(kph, units) // _BIN_DISPLAY) * _BIN_DISPLAY
+        bins[lo] = bins.get(lo, 0) + 1
     hist_max = max(bins.values(), default=0)
     histogram = [
         {
-            "label": f"{disp(lo):.0f}",
+            "label": str(lo),
             "count": bins[lo],
             "pct": (bins[lo] / hist_max * 100) if hist_max else 0,
         }
