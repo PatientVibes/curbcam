@@ -7,6 +7,7 @@ synchronous YAML I/O per event.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import logging
 import time
@@ -16,6 +17,7 @@ from typing import Any
 from curbcam.alerts.channels import MqttPublisher, send_ntfy, send_webhook
 from curbcam.alerts.message import build_payload, build_text
 from curbcam.config.schema import AlertsSettings
+from curbcam.localtime import zone
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,7 @@ class AlertDispatcher:
         full = self._store.load()
         self._settings: AlertsSettings = full.alerts
         self._units: str = full.server.units
+        self._tz: dt.tzinfo = zone(full.server.timezone)
 
     # -- subscribe loop (run as an asyncio task) --
     async def run(self) -> None:
@@ -75,7 +78,7 @@ class AlertDispatcher:
         if speed_kph < s.min_speed_kph:
             return
         data = build_payload(s, payload, self._units)
-        text = build_text(data)
+        text = build_text(data, self._tz)
         now = self._clock()
         if s.ntfy_enabled and s.ntfy_topic and self._due("ntfy", s.ntfy_cooldown_s, now):
             await self._fire("ntfy", send_ntfy(self._client, s, text, data["url"]), now)

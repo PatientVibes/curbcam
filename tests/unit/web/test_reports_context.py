@@ -1,12 +1,23 @@
 import datetime as dt
+from zoneinfo import ZoneInfo
 
 from curbcam.web.reports import window_start
 
 
-def test_window_start_mappings() -> None:
+def test_window_start_mappings_utc() -> None:
     now = dt.datetime(2026, 6, 1, 15, 30, 0)
-    assert window_start("today", now) == dt.datetime(2026, 6, 1, 0, 0, 0)
-    assert window_start("7d", now) == now - dt.timedelta(days=7)
-    assert window_start("30d", now) == now - dt.timedelta(days=30)
-    assert window_start("all", now) is None
-    assert window_start("garbage", now) == now - dt.timedelta(days=7)  # default 7d
+    assert window_start("today", now, dt.UTC) == dt.datetime(2026, 6, 1, 0, 0, 0)
+    assert window_start("7d", now, dt.UTC) == now - dt.timedelta(days=7)
+    assert window_start("30d", now, dt.UTC) == now - dt.timedelta(days=30)
+    assert window_start("all", now, dt.UTC) is None
+    assert window_start("garbage", now, dt.UTC) == now - dt.timedelta(days=7)  # default 7d
+
+
+def test_today_window_uses_local_midnight() -> None:
+    # 06:30 UTC on 2026-06-01 is 23:30 on 2026-05-31 in Los Angeles (UTC-7 in
+    # summer). "Today" must start at LOCAL midnight (2026-06-01 00:00 -07:00 =
+    # 2026-06-01 07:00 UTC), not UTC midnight.
+    now_utc = dt.datetime(2026, 6, 1, 6, 30, 0)
+    la = ZoneInfo("America/Los_Angeles")
+    # local time is still 2026-05-31, so local midnight is 2026-05-31 00:00 -07:00
+    assert window_start("today", now_utc, la) == dt.datetime(2026, 5, 31, 7, 0, 0)

@@ -87,6 +87,25 @@ def test_histogram_buckets_in_display_units_not_kph(supervisor) -> None:  # type
     assert all(int(lbl) % 5 == 0 for lbl in labels)
 
 
+def test_build_context_uses_configured_timezone_for_hours(supervisor) -> None:  # type: ignore[no-untyped-def]
+    raw = supervisor.config_store.load_raw()
+    raw.setdefault("server", {})["timezone"] = "America/Los_Angeles"
+    supervisor.config_store.save_raw(raw)
+    # 16:00 UTC is 09:00 in Los Angeles (UTC-7 in summer).
+    supervisor.events.save(
+        ts_utc=dt.datetime(2026, 5, 28, 16, 0, 0),
+        speed_kph=30.0,
+        direction="L2R",
+        frame_count=10,
+        track_len_px=100,
+        image_path="e.jpg",
+        thumb_path="t.jpg",
+        calibration_id=None,
+    )
+    ctx = build_context(supervisor, "all")
+    assert ctx["busiest_hour"] == 9  # local hour, not 16 (UTC)
+
+
 def test_daily_trend_fills_zero_event_days(supervisor) -> None:  # type: ignore[no-untyped-def]
     import curbcam.web.reports as reports_mod
 

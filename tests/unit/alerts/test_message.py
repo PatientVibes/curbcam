@@ -25,6 +25,15 @@ def test_build_text_includes_speed_units_direction_and_time() -> None:
     assert build_text(build_payload(s, EVENT, "mph")) == "38 mph L2R at 19:14"
 
 
+def test_build_text_renders_time_in_supplied_timezone() -> None:
+    from zoneinfo import ZoneInfo
+
+    s = AlertsSettings(base_url="")
+    # 19:14:02 UTC -> 12:14 in Los Angeles (UTC-7 in summer).
+    text = build_text(build_payload(s, EVENT, "mph"), ZoneInfo("America/Los_Angeles"))
+    assert text == "38 mph L2R at 12:14"
+
+
 def test_build_text_omits_time_when_ts_missing_or_unparseable() -> None:
     s = AlertsSettings(base_url="")
     assert (
