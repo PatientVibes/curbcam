@@ -38,13 +38,19 @@ async def _stats_loop(supervisor: Supervisor) -> None:
 def create_app(supervisor: Supervisor) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+        from curbcam.alerts.dispatcher import AlertDispatcher
+
         supervisor.bus.bind_loop(asyncio.get_running_loop())
         supervisor.start()
         stats_task = asyncio.create_task(_stats_loop(supervisor))
+        dispatcher = AlertDispatcher(supervisor.config_store, supervisor.bus)
+        alerts_task = asyncio.create_task(dispatcher.run())
         try:
             yield
         finally:
             stats_task.cancel()
+            alerts_task.cancel()
+            await dispatcher.aclose()
             supervisor.stop()
 
     app = FastAPI(title="curbcam", lifespan=lifespan)
