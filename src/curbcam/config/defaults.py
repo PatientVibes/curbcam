@@ -84,4 +84,42 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
         "is verbose and useful for troubleshooting; WARNING shows only problems. More "
         "verbosity fills the log faster.",
     ),
+    "alerts.enabled": (
+        "Enable alerts",
+        "Master switch. When off, no channel fires regardless of its own setting.",
+    ),
+    "alerts.min_speed_kph": (
+        "Alert speed (km/h)",
+        "Only vehicles at or above this speed (in km/h) trigger an alert. Independent "
+        "of the recording threshold; usually set higher.",
+    ),
+    "alerts.base_url": (
+        "Site URL",
+        "Base URL used for the click-through link in alerts, e.g. "
+        "http://curbcam.local:8080. Leave blank to send no link.",
+    ),
+    "alerts.ntfy_enabled": ("ntfy: enable", "Send alerts to an ntfy topic (phone push)."),
+    "alerts.ntfy_server": ("ntfy: server", "ntfy server base URL. Default https://ntfy.sh."),
+    "alerts.ntfy_topic": ("ntfy: topic", "The ntfy topic to publish to. Required for ntfy."),
+    "alerts.ntfy_cooldown_s": (
+        "ntfy: cooldown (s)",
+        "Minimum seconds between ntfy alerts. 0 sends one per qualifying event.",
+    ),
+    "alerts.webhook_enabled": ("Webhook: enable", "POST a JSON body to a URL of your choice."),
+    "alerts.webhook_url": ("Webhook: URL", "Destination URL for the JSON POST. Required."),
+    "alerts.webhook_cooldown_s": (
+        "Webhook: cooldown (s)",
+        "Minimum seconds between webhook posts. 0 sends one per qualifying event.",
+    ),
+    "alerts.mqtt_enabled": ("MQTT: enable", "Publish a JSON body to an MQTT broker."),
+    "alerts.mqtt_host": ("MQTT: host", "Broker hostname or IP. Required for MQTT."),
+    "alerts.mqtt_port": ("MQTT: port", "Broker port. Default 1883."),
+    "alerts.mqtt_topic": ("MQTT: topic", "Topic to publish to. Default curbcam/events."),
+    "alerts.mqtt_username": ("MQTT: username", "Broker username (optional)."),
+    "alerts.mqtt_password": ("MQTT: password", "Broker password (optional)."),
+    "alerts.mqtt_cooldown_s": (
+        "MQTT: cooldown (s)",
+        "Minimum seconds between MQTT publishes. 0 (default) publishes every "
+        "qualifying event — the right setting for Home Assistant.",
+    ),
 }
