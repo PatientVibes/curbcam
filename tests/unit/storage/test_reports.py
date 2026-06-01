@@ -15,13 +15,24 @@ def repo(tmp_path: Path) -> EventRepo:
     r = EventRepo(db)
     # Six events on 2026-05-28, speeds 20..45, hours 8,8,9,9,10,10.
     for i, (hour, speed, direction) in enumerate(
-        [(8, 20.0, "L2R"), (8, 25.0, "R2L"), (9, 30.0, "L2R"),
-         (9, 35.0, "R2L"), (10, 40.0, "L2R"), (10, 45.0, "R2L")]
+        [
+            (8, 20.0, "L2R"),
+            (8, 25.0, "R2L"),
+            (9, 30.0, "L2R"),
+            (9, 35.0, "R2L"),
+            (10, 40.0, "L2R"),
+            (10, 45.0, "R2L"),
+        ]
     ):
         r.save(
             ts_utc=dt.datetime(2026, 5, 28, hour, i, 0),
-            speed_kph=speed, direction=direction, frame_count=10, track_len_px=200,
-            image_path=f"e_{i}.jpg", thumb_path=f"t_{i}.jpg", calibration_id=None,
+            speed_kph=speed,
+            direction=direction,
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"e_{i}.jpg",
+            thumb_path=f"t_{i}.jpg",
+            calibration_id=None,
         )
     return r
 
@@ -29,8 +40,8 @@ def repo(tmp_path: Path) -> EventRepo:
 def test_summary_percentiles(repo: EventRepo) -> None:
     s = repo.summary(None)
     assert s.count == 6
-    assert s.median_kph == pytest.approx(32.5)   # interp between 30 and 35
-    assert s.p85_kph == pytest.approx(41.25)      # interp 40..45 at 0.85
+    assert s.median_kph == pytest.approx(32.5)  # interp between 30 and 35
+    assert s.p85_kph == pytest.approx(41.25)  # interp 40..45 at 0.85
     assert s.max_kph == pytest.approx(45.0)
 
 
@@ -57,6 +68,6 @@ def test_daily_counts(repo: EventRepo) -> None:
 
 def test_by_direction(repo: EventRepo) -> None:
     bd = repo.by_direction(None)
-    assert bd["L2R"][0] == 3 and bd["R2L"][0] == 3      # counts
-    assert bd["L2R"][1] == pytest.approx(30.0)           # median of 20,30,40
-    assert bd["R2L"][1] == pytest.approx(35.0)           # median of 25,35,45
+    assert bd["L2R"][0] == 3 and bd["R2L"][0] == 3  # counts
+    assert bd["L2R"][1] == pytest.approx(30.0)  # median of 20,30,40
+    assert bd["R2L"][1] == pytest.approx(35.0)  # median of 25,35,45

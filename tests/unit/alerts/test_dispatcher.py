@@ -7,7 +7,10 @@ from curbcam.config.schema import AlertsSettings, Settings
 class _FakeStore:
     def __init__(self, alerts: AlertsSettings, units: str = "kph") -> None:
         self._s = Settings().model_copy(
-            update={"alerts": alerts, "server": Settings().server.model_copy(update={"units": units})}
+            update={
+                "alerts": alerts,
+                "server": Settings().server.model_copy(update={"units": units}),
+            }
         )
 
     def set(self, alerts: AlertsSettings) -> None:
@@ -77,18 +80,20 @@ async def test_cooldown_suppresses_then_allows() -> None:
     c = _FakeClient()
     now = {"t": 0.0}
     d = _disp(store, c, lambda: now["t"])
-    await d.handle(EVENT)          # fires
+    await d.handle(EVENT)  # fires
     now["t"] = 30.0
-    await d.handle(EVENT)          # within cooldown -> suppressed
+    await d.handle(EVENT)  # within cooldown -> suppressed
     now["t"] = 61.0
-    await d.handle(EVENT)          # past cooldown -> fires
+    await d.handle(EVENT)  # past cooldown -> fires
     assert len(c.calls) == 2
 
 
 @pytest.mark.asyncio
 async def test_cooldown_zero_fires_every_event() -> None:
     store = _FakeStore(
-        AlertsSettings(enabled=True, webhook_enabled=True, webhook_url="https://h", webhook_cooldown_s=0)
+        AlertsSettings(
+            enabled=True, webhook_enabled=True, webhook_url="https://h", webhook_cooldown_s=0
+        )
     )
     c = _FakeClient()
     d = _disp(store, c, lambda: 0.0)
@@ -108,8 +113,11 @@ async def test_channel_failure_is_isolated() -> None:
     store = _FakeStore(
         AlertsSettings(
             enabled=True,
-            ntfy_enabled=True, ntfy_topic="boom", ntfy_server="https://n",
-            webhook_enabled=True, webhook_url="https://ok",
+            ntfy_enabled=True,
+            ntfy_topic="boom",
+            ntfy_server="https://n",
+            webhook_enabled=True,
+            webhook_url="https://ok",
         )
     )
     c = _BoomClient()

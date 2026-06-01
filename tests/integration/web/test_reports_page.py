@@ -11,9 +11,13 @@ def _seed(supervisor, n: int = 5) -> None:  # type: ignore[no-untyped-def]
     for i in range(n):
         supervisor.events.save(
             ts_utc=dt.datetime.now() - dt.timedelta(hours=i),
-            speed_kph=30.0 + i, direction="L2R" if i % 2 else "R2L",
-            frame_count=10, track_len_px=200,
-            image_path=f"e_{i}.jpg", thumb_path=f"t_{i}.jpg", calibration_id=None,
+            speed_kph=30.0 + i,
+            direction="L2R" if i % 2 else "R2L",
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"e_{i}.jpg",
+            thumb_path=f"t_{i}.jpg",
+            calibration_id=None,
         )
 
 

@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from curbcam.alerts.channels import MqttPublisher, send_ntfy, send_webhook
 from curbcam.alerts.message import build_payload, build_text
@@ -41,7 +42,7 @@ class AlertDispatcher:
         self._client = http_client
         self._last_fired: dict[str, float] = {}
         self._mqtt: Any | None = None
-        self._mqtt_sig: tuple | None = None
+        self._mqtt_sig: tuple[str, int, str, str] | None = None
         self.refresh()
 
     # -- config cache --
@@ -99,7 +100,9 @@ class AlertDispatcher:
         if self._mqtt is None or self._mqtt_sig != sig:
             if self._mqtt is not None:
                 self._mqtt.close()
-            self._mqtt = self._mqtt_factory(s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password)
+            self._mqtt = self._mqtt_factory(
+                s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password
+            )
             self._mqtt_sig = sig
         await self._mqtt.publish(s.mqtt_topic, json.dumps(data))
 
