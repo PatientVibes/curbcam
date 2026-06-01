@@ -42,3 +42,5 @@ media/
 .codex-review-*.txt
 .opencode-review-*.txt
 .pr-review-out/
+
+frames/

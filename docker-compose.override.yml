@@ -1,0 +1,6 @@
+services:
+  curbcam:
+    environment:
+      - CURBCAM_CAMERA__SOURCE=file:/frames
+    volumes:
+      - ./frames:/frames:ro
