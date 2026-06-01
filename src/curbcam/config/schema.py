@@ -35,6 +35,10 @@ class ServerSettings(BaseModel):
     units: Literal["kph", "mph"] = "kph"
     min_event_speed_kph: float = Field(default=5.0, ge=0)
     log_level: Literal["DEBUG", "INFO", "WARNING"] = "INFO"
+    # IANA timezone name (e.g. "America/New_York") for Reports + alert times.
+    # Empty = UTC. An unknown name falls back to UTC at use time rather than
+    # rejecting the whole config (see curbcam.localtime).
+    timezone: str = ""
 
 
 class AlertsSettings(BaseModel):

@@ -78,6 +78,13 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
         "lower it to capture slower movers. Set it too high and you'll miss real "
         "traffic.",
     ),
+    "server.timezone": (
+        "Timezone",
+        "Your local timezone as an IANA name, e.g. America/New_York or "
+        "Europe/London. Used for the Reports page (hour-of-day, daily totals, the "
+        "Today window) and the time shown in alerts. Leave blank to use UTC. The "
+        "live event feed always shows your browser's local time.",
+    ),
     "server.log_level": (
         "Log level",
         "How much detail curbcam writes to its log. INFO is the normal setting; DEBUG "
@@ -100,7 +107,13 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
     ),
     "alerts.ntfy_enabled": ("ntfy: enable", "Send alerts to an ntfy topic (phone push)."),
     "alerts.ntfy_server": ("ntfy: server", "ntfy server base URL. Default https://ntfy.sh."),
-    "alerts.ntfy_topic": ("ntfy: topic", "The ntfy topic to publish to. Required for ntfy."),
+    "alerts.ntfy_topic": (
+        "ntfy: topic",
+        "The ntfy topic to publish to (required). WARNING: on the public ntfy.sh "
+        "server, anyone who knows the topic name can read your alerts — choose a "
+        "long, random, unguessable name (e.g. curbcam-7f3k9q2x), or run your own "
+        "ntfy server.",
+    ),
     "alerts.ntfy_cooldown_s": (
         "ntfy: cooldown (s)",
         "Minimum seconds between ntfy alerts. 0 sends one per qualifying event.",

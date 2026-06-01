@@ -43,6 +43,11 @@ def test_min_event_speed_must_be_non_negative() -> None:
         ServerSettings(min_event_speed_kph=-1.0)
 
 
+def test_timezone_defaults_to_empty_meaning_utc() -> None:
+    assert ServerSettings().timezone == ""
+    assert ServerSettings(timezone="America/New_York").timezone == "America/New_York"
+
+
 def test_field_labels_is_non_empty_dict() -> None:
     """FIELD_LABELS should be a non-empty dict with string keys and 2-tuple values."""
     assert isinstance(FIELD_LABELS, dict)

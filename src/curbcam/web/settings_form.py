@@ -18,6 +18,7 @@ PRIMARY: list[tuple[str, str]] = [
     ("camera.fps_target", "number"),
     ("server.units", "select:kph,mph"),
     ("server.min_event_speed_kph", "number"),
+    ("server.timezone", "text"),
 ]
 ADVANCED: list[tuple[str, str]] = [
     ("detector.min_area_px", "number"),

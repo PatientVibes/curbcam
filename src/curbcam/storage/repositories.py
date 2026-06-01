@@ -11,8 +11,9 @@ import datetime as dt
 import math
 from dataclasses import dataclass
 
-from sqlalchemy import and_, func, or_, update
+from sqlalchemy import and_, or_, update
 
+from curbcam.localtime import to_local
 from curbcam.storage.db import Database
 from curbcam.storage.models import Calibration, Event
 
@@ -179,21 +180,29 @@ class EventRepo:
             max_kph=speeds[-1],
         )
 
-    def by_hour(self, start: dt.datetime | None) -> list[int]:
+    def _timestamps_since(self, start: dt.datetime | None) -> list[dt.datetime]:
         with self._db.session() as s:
-            q = s.query(func.strftime("%H", Event.ts_utc), func.count())
+            q = s.query(Event.ts_utc)
             if start is not None:
                 q = q.filter(Event.ts_utc >= start)
-            counts = {int(hr): n for hr, n in q.group_by(func.strftime("%H", Event.ts_utc)).all()}
-        return [counts.get(h, 0) for h in range(24)]
+            return [r[0] for r in q.all()]
 
-    def daily_counts(self, start: dt.datetime | None) -> list[tuple[str, int]]:
-        with self._db.session() as s:
-            day = func.strftime("%Y-%m-%d", Event.ts_utc)
-            q = s.query(day, func.count())
-            if start is not None:
-                q = q.filter(Event.ts_utc >= start)
-            return [(d, n) for d, n in q.group_by(day).order_by(day).all()]
+    def by_hour(self, start: dt.datetime | None, tz: dt.tzinfo = dt.UTC) -> list[int]:
+        # Bucket by LOCAL hour-of-day. SQLite strftime can't apply an IANA zone
+        # (DST-correct), so convert each timestamp in Python via ``tz``.
+        out = [0] * 24
+        for tsu in self._timestamps_since(start):
+            out[to_local(tsu, tz).hour] += 1
+        return out
+
+    def daily_counts(
+        self, start: dt.datetime | None, tz: dt.tzinfo = dt.UTC
+    ) -> list[tuple[str, int]]:
+        counts: dict[str, int] = {}
+        for tsu in self._timestamps_since(start):
+            key = to_local(tsu, tz).date().isoformat()
+            counts[key] = counts.get(key, 0) + 1
+        return sorted(counts.items())
 
     def by_direction(self, start: dt.datetime | None) -> dict[str, tuple[int, float]]:
         out: dict[str, tuple[int, float]] = {}

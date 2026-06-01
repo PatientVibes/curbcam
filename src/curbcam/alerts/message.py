@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Any
 
 from curbcam.config.schema import AlertsSettings
+from curbcam.localtime import to_local
 from curbcam.web.units import kph_to_display
 
 
@@ -23,12 +24,13 @@ def build_payload(settings: AlertsSettings, event: dict[str, Any], units: str) -
     }
 
 
-def build_text(payload: dict[str, Any]) -> str:
+def build_text(payload: dict[str, Any], tz: dt.tzinfo = dt.UTC) -> str:
     base = f"{payload['speed_display']:.0f} {payload['units']} {payload['direction']}".strip()
     ts = payload.get("ts_utc", "")
     if ts:
         try:
-            return f"{base} at {dt.datetime.fromisoformat(ts).strftime('%H:%M')}"
+            local = to_local(dt.datetime.fromisoformat(ts), tz)
+            return f"{base} at {local.strftime('%H:%M')}"
         except ValueError:
             pass  # unparseable timestamp -> omit it rather than fail the alert
     return base

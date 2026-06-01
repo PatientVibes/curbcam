@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from curbcam.localtime import to_local, zone
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.units import kph_to_display
 
@@ -12,14 +13,16 @@ WINDOWS = ("today", "7d", "30d", "all")
 _BIN_DISPLAY = 5  # histogram bucket width, in the user's display units (5 mph / 5 kph)
 
 
-def window_start(window: str, now: dt.datetime) -> dt.datetime | None:
+def window_start(window: str, now_utc: dt.datetime, tz: dt.tzinfo) -> dt.datetime | None:
     if window == "today":
-        return dt.datetime.combine(now.date(), dt.time.min)
+        # Local midnight today, expressed back in naive UTC for DB filtering.
+        local_midnight = to_local(now_utc, tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        return local_midnight.astimezone(dt.UTC).replace(tzinfo=None)
     if window == "30d":
-        return now - dt.timedelta(days=30)
+        return now_utc - dt.timedelta(days=30)
     if window == "all":
         return None
-    return now - dt.timedelta(days=7)  # 7d is the default for "7d" and anything unknown
+    return now_utc - dt.timedelta(days=7)  # default for "7d" and anything unknown
 
 
 def _now_utc() -> dt.datetime:
@@ -54,13 +57,16 @@ def _fill_daily(
 def build_context(sup: Supervisor, window: str) -> dict[str, Any]:
     if window not in WINDOWS:
         window = "7d"
-    units = sup.config_store.load().server.units
-    start = window_start(window, _now_utc())
+    server = sup.config_store.load().server
+    units = server.units
+    tz = zone(server.timezone)
+    now_utc = _now_utc()
+    start = window_start(window, now_utc, tz)
     repo = sup.events
 
     summary = repo.summary(start)
-    by_hour = repo.by_hour(start)
-    daily = _fill_daily(repo.daily_counts(start), start, _now_utc().date())
+    by_hour = repo.by_hour(start, tz)
+    daily = _fill_daily(repo.daily_counts(start, tz), start, to_local(now_utc, tz).date())
     by_dir = repo.by_direction(start)
 
     def disp(kph: float) -> float:

@@ -6,7 +6,11 @@ Detects moving vehicles, calculates speed, stores results — all configurable
 through a web UI with a guided calibration wizard. No SSH required for normal
 use.
 
-**Status:** MVP-3 (Docker install + mDNS discovery) — see [`docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md`](docs/specs/2026-05-29-curbcam-mvp-3-docker-install.md).
+**Status:** Active. The first-run wizard, live dashboard, Events history with CSV
+export, a **Reports** dashboard, and threshold **Alerts** (ntfy / webhook / MQTT)
+have all shipped. Three-command Docker install with mDNS discovery; a dedicated
+arm64 image adds Raspberry Pi Camera Module support. See [`docs/specs/`](docs/specs/)
+for the design and per-feature specs.
 
 ## Install (Docker)
 
@@ -99,10 +103,31 @@ inline-SVG charts for the speed distribution, traffic by hour of day, the daily
 volume trend, and a per-direction breakdown. No frontend build step — the charts
 are server-rendered SVG.
 
+Hour-of-day, the daily totals, and the *Today* window are shown in the timezone
+you set under **Settings → Timezone** (an IANA name like `America/New_York`);
+leave it blank to use UTC. The live event feed always uses your browser's clock.
+
 ### Alerts
 
 curbcam can push a notification whenever a vehicle is detected at or above a
-speed you choose. Configure everything under **Settings → Alerts**:
+speed you choose.
+
+**Get alerts on your phone (ntfy) in four steps:**
+
+1. Install the free **ntfy** app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) / [iOS](https://apps.apple.com/us/app/ntfy/id1625396347)).
+2. Pick a **long, random topic name** — e.g. `curbcam-7f3k9q2x`. On the public
+   `ntfy.sh` server **anyone who knows the topic can read your alerts**, so treat
+   the name like a password (or run your own ntfy server). In the app, tap **+**
+   and subscribe to that topic.
+3. In curbcam, open **Settings → Alerts**, turn on *Enable alerts* and *ntfy:
+   enable*, paste the same topic into *ntfy: topic*, set an *Alert speed*, and
+   **Save**.
+4. Drive past (or wait for a vehicle) above the threshold — the alert lands on
+   your phone with the speed, direction, time, and a link back to the Events page.
+
+Times in alerts use your **Settings → Timezone** (blank = UTC).
+
+Everything is configured under **Settings → Alerts**:
 
 - **Master switch + threshold.** Alerts are off by default. Set an *Alert speed*
   (independent of the recording threshold — usually set it higher) so only the
@@ -110,6 +135,8 @@ speed you choose. Configure everything under **Settings → Alerts**:
 - **Channels.** Three independent transports, each separately toggleable:
   - **ntfy** — push to your phone via an [ntfy](https://ntfy.sh) topic
     (default server `https://ntfy.sh`; the alert links back to your Events page).
+    **Public-server topics are readable by anyone who knows the name — pick an
+    unguessable one.**
   - **Webhook** — POST a JSON body (event id, speed in km/h and display units,
     direction, timestamp, link) to any URL.
   - **MQTT** — publish the same JSON to an MQTT broker (e.g. for Home Assistant).
@@ -140,7 +167,7 @@ it is the lever that would tighten accuracy further.)
 
 | Prefix | Example | Notes |
 |---|---|---|
-| `picamera2:` | `picamera2:0` | Raspberry Pi Camera Module via libcamera. Requires `uv pip install '.[picamera2]'` on the Pi. |
+| `picamera2:` | `picamera2:0` | Raspberry Pi Camera Module via libcamera. In Docker, use the `:picamera` image (above) — no pip step. For native source installs on the Pi: `uv pip install '.[picamera2]'`. |
 | `usb:` | `usb:0` or `usb:/dev/video0` | Any V4L2 / DirectShow webcam OpenCV can open. |
 | `rtsp://` | `rtsp://user:pw@host/stream` | IP cameras. Stores credentials in plaintext — prefer the env-var override (see below). |
 | `file:` | `file:./fixtures/sample_run` | Replays a directory of JPEGs. Dev + tests. |
