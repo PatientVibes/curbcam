@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
-from curbcam.web.deps import get_supervisor, require_session
+from curbcam.web.deps import get_supervisor, require_session, session_is_valid
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
 
@@ -20,10 +20,12 @@ def setup_page(
     # No session required — this is the entry point before any password exists.
     if sup.auth.has_password() and sup.calibrations.get_active() is not None:
         return RedirectResponse("/", status_code=303)
+    need_password = not sup.auth.has_password()
+    need_login = sup.auth.has_password() and not session_is_valid(sup, request)
     return templates.TemplateResponse(
         request,
         "setup/index.html",
-        {"need_password": not sup.auth.has_password()},
+        {"need_password": need_password, "need_login": need_login},
     )
 
 
