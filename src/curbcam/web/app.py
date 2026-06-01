@@ -51,6 +51,11 @@ def create_app(supervisor: Supervisor) -> FastAPI:
         finally:
             stats_task.cancel()
             alerts_task.cancel()
+            # Await the cancelled tasks before tearing down resources: aclose()
+            # closes the httpx client the dispatcher may still be mid-send on,
+            # and awaiting also retrieves the CancelledError so asyncio doesn't
+            # log "Task exception was never retrieved".
+            await asyncio.gather(stats_task, alerts_task, return_exceptions=True)
             await dispatcher.aclose()
             supervisor.stop()
 

@@ -50,9 +50,11 @@ def test_summary_empty_window(repo: EventRepo) -> None:
     assert s.count == 0 and s.median_kph == 0.0 and s.max_kph == 0.0
 
 
-def test_speed_histogram_buckets(repo: EventRepo) -> None:
-    # 10-kph bins -> {20:2 (20,25), 30:2 (30,35), 40:2 (40,45)}
-    assert repo.speed_histogram(None, 10.0) == {20: 2, 30: 2, 40: 2}
+def test_speeds_since_is_sorted_kph(repo: EventRepo) -> None:
+    # Histogram bucketing moved to the display layer; the repo exposes the
+    # raw sorted speeds it buckets from.
+    assert repo.speeds_since(None) == [20.0, 25.0, 30.0, 35.0, 40.0, 45.0]
+    assert repo.speeds_since(None, "R2L") == [25.0, 35.0, 45.0]
 
 
 def test_by_hour_returns_24_slots(repo: EventRepo) -> None:
