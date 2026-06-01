@@ -8,9 +8,10 @@ invariant a single function call.
 from __future__ import annotations
 
 import datetime as dt
+import math
 from dataclasses import dataclass
 
-from sqlalchemy import and_, or_, update
+from sqlalchemy import and_, func, or_, update
 
 from curbcam.storage.db import Database
 from curbcam.storage.models import Calibration, Event
@@ -23,6 +24,26 @@ class EventFilter:
     min_speed_kph: float | None = None
     max_speed_kph: float | None = None
     direction: str | None = None
+
+
+@dataclass
+class ReportSummary:
+    count: int
+    median_kph: float
+    p85_kph: float
+    max_kph: float
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    """Linear-interpolated percentile (numpy 'linear' method)."""
+    if not sorted_vals:
+        return 0.0
+    k = (len(sorted_vals) - 1) * (pct / 100.0)
+    lo = math.floor(k)
+    hi = math.ceil(k)
+    if lo == hi:
+        return sorted_vals[int(k)]
+    return sorted_vals[lo] * (hi - k) + sorted_vals[hi] * (k - lo)
 
 
 class CalibrationRepo:
@@ -135,3 +156,53 @@ class EventRepo:
                 s.delete(r)
             s.commit()
             return paths
+
+    def _speeds_since(self, start: dt.datetime | None, direction: str | None = None) -> list[float]:
+        with self._db.session() as s:
+            q = s.query(Event.speed_kph)
+            if start is not None:
+                q = q.filter(Event.ts_utc >= start)
+            if direction is not None:
+                q = q.filter(Event.direction == direction)
+            return sorted(float(r[0]) for r in q.all())
+
+    def summary(self, start: dt.datetime | None) -> ReportSummary:
+        speeds = self._speeds_since(start)
+        if not speeds:
+            return ReportSummary(0, 0.0, 0.0, 0.0)
+        return ReportSummary(
+            count=len(speeds),
+            median_kph=_percentile(speeds, 50),
+            p85_kph=_percentile(speeds, 85),
+            max_kph=speeds[-1],
+        )
+
+    def speed_histogram(self, start: dt.datetime | None, bin_kph: float) -> dict[int, int]:
+        out: dict[int, int] = {}
+        for v in self._speeds_since(start):
+            b = int(v // bin_kph) * int(bin_kph)
+            out[b] = out.get(b, 0) + 1
+        return out
+
+    def by_hour(self, start: dt.datetime | None) -> list[int]:
+        with self._db.session() as s:
+            q = s.query(func.strftime("%H", Event.ts_utc), func.count())
+            if start is not None:
+                q = q.filter(Event.ts_utc >= start)
+            counts = {int(hr): n for hr, n in q.group_by(func.strftime("%H", Event.ts_utc)).all()}
+        return [counts.get(h, 0) for h in range(24)]
+
+    def daily_counts(self, start: dt.datetime | None) -> list[tuple[str, int]]:
+        with self._db.session() as s:
+            day = func.strftime("%Y-%m-%d", Event.ts_utc)
+            q = s.query(day, func.count())
+            if start is not None:
+                q = q.filter(Event.ts_utc >= start)
+            return [(d, n) for d, n in q.group_by(day).order_by(day).all()]
+
+    def by_direction(self, start: dt.datetime | None) -> dict[str, tuple[int, float]]:
+        out: dict[str, tuple[int, float]] = {}
+        for direction in ("L2R", "R2L"):
+            speeds = self._speeds_since(start, direction)
+            out[direction] = (len(speeds), _percentile(speeds, 50) if speeds else 0.0)
+        return out
