@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from starlette.concurrency import run_in_threadpool
 
+from curbcam.camera.discovery import discover_cameras
 from curbcam.web.deps import get_supervisor, issue_session, require_session
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
@@ -47,6 +48,16 @@ def setup_login(
     resp = templates.TemplateResponse(request, "setup/configure.html", {})
     issue_session(sup, resp)
     return resp
+
+
+@router.get("/api/setup/cameras", response_class=HTMLResponse)
+async def setup_cameras(
+    request: Request,
+    _: None = Depends(require_session),
+) -> HTMLResponse:
+    # Discovery probes hardware (ioctls, picamera2) — run off the event loop.
+    cameras = await run_in_threadpool(discover_cameras)
+    return templates.TemplateResponse(request, "setup/cameras.html", {"cameras": cameras})
 
 
 @router.post("/api/setup/camera", response_class=HTMLResponse)
