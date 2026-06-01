@@ -205,9 +205,10 @@ The repo returns plain aggregate rows; the template computes bar geometry.
 
 ### 5.5 Honest precision
 
-Speeds are bucketed/rounded (5-unit bins; summary stats to whole units) so the
-dashboard never implies more precision than the two-scale calibration
-delivers.
+Speeds are bucketed/rounded (5-unit histogram bins; summary stats to one
+decimal place) so the dashboard never implies more precision than the two-scale
+calibration delivers. (One decimal on a median reads better than a rounded-off
+integer while still not over-claiming.)
 
 ### 5.6 UI
 
