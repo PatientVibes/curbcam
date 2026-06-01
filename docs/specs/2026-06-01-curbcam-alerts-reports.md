@@ -62,11 +62,12 @@ runner thread ── bus.publish_threadsafe("event") ──▶ [asyncio loop]
 - The detector thread is untouched; the dispatcher is a pure consumer of the
   existing `kind="event"` payload
   (`id`, `speed_kph`, `direction`, `image_path`, `thumb_path`, `ts_utc`).
-- **Live config, no caching.** On each event the dispatcher reads alert
-  settings fresh from `config_store.load()`. Event arrival rates are seconds
-  apart, so re-reading the parsed YAML per event is cheap and removes any
-  stale-config wiring. (A Settings save already restarts the pipeline; the
-  dispatcher just sees new config on the next event.)
+- **Cached config, refreshed on `settings_changed`.** The dispatcher loads
+  `AlertsSettings` once at startup and caches it, then reloads the cache when a
+  `kind="settings_changed"` envelope arrives on the bus. Every Settings save
+  calls `Supervisor.restart()`, which publishes exactly that envelope — so the
+  cache stays live without reading YAML on the event loop per event (which would
+  put synchronous file I/O in the asyncio loop's hot path).
 - **Lifecycle:** created and cancelled alongside `_stats_loop` in `lifespan`.
 
 ### 4.2 Qualifying rule
@@ -163,9 +164,12 @@ A new **"Alerts" fieldset** added to the existing flat settings form via
 `settings_form.py` (`PRIMARY`/`ADVANCED` gain a third group `ALERTS`) and
 `config/defaults.FIELD_LABELS`. Env-shadowed fields render read-only exactly
 as today. No conditional show/hide JS for v1 — flat fields match the current
-pattern. Boolean fields render as a `select:true,false` (reusing the existing
-select kind) or a checkbox kind (decided in the plan; must round-trip through
-the existing `_coerce`/Pydantic path).
+pattern. **Boolean fields render as a `select:true,false`** (reusing the
+existing select kind), *not* checkboxes: a `<select>` always submits a value,
+whereas an unchecked checkbox submits no key and — because the save loop
+overlays submitted keys onto the loaded raw config (`settings.py:46-56`) —
+would leave a `true` boolean stuck on. `_coerce` gains a boolean branch so known
+`*_enabled` keys persist as real YAML bools.
 
 ## 5. Reports
 
