@@ -10,7 +10,6 @@ wizard always offers manual entry (needed anyway for RTSP/file sources).
 
 from __future__ import annotations
 
-import fcntl
 import glob
 import logging
 import os
@@ -96,6 +95,11 @@ class _V4l2Cap:
 
 def _v4l2_querycap(path: str) -> _V4l2Cap | None:
     """Query a V4L2 node's capabilities, or None if it can't be queried."""
+    # fcntl is Linux-only; import lazily so this module (and everything that
+    # imports it, e.g. the web routes) still loads on Windows/macOS dev
+    # machines. discover_cameras() catches the ImportError as an empty probe.
+    import fcntl
+
     try:
         fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
     except OSError:

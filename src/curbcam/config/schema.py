@@ -37,6 +37,29 @@ class ServerSettings(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING"] = "INFO"
 
 
+class AlertsSettings(BaseModel):
+    enabled: bool = False
+    min_speed_kph: float = Field(default=0.0, ge=0)
+    base_url: str = "http://curbcam.local:8080"
+
+    ntfy_enabled: bool = False
+    ntfy_server: str = "https://ntfy.sh"
+    ntfy_topic: str = ""
+    ntfy_cooldown_s: int = Field(default=60, ge=0)
+
+    webhook_enabled: bool = False
+    webhook_url: str = ""
+    webhook_cooldown_s: int = Field(default=60, ge=0)
+
+    mqtt_enabled: bool = False
+    mqtt_host: str = ""
+    mqtt_port: int = Field(default=1883, ge=1, le=65535)
+    mqtt_topic: str = "curbcam/events"
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    mqtt_cooldown_s: int = Field(default=0, ge=0)
+
+
 class Settings(BaseSettings):
     """Root settings model. Env vars override fields, e.g.
     ``CURBCAM_CAMERA__SOURCE=rtsp://...`` overrides ``camera.source``.
@@ -52,3 +75,4 @@ class Settings(BaseSettings):
     detector: DetectorSettings = DetectorSettings()
     retention: RetentionSettings = RetentionSettings()
     server: ServerSettings = ServerSettings()
+    alerts: AlertsSettings = AlertsSettings()

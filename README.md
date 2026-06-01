@@ -85,9 +85,42 @@ On first launch the web UI redirects to a setup wizard:
    object, enter the real-world distance and travel direction.
 
 After setup: a dashboard with live MJPEG + an event feed, a filterable Events
-history with CSV export, and Settings (saving restarts the detector). Embed the
-preview elsewhere (e.g. Home Assistant) with a revocable stream token from
-**Settings → Integrations**: `http://<pi-ip>:8000/api/stream.mjpeg?token=...`.
+history with CSV export, a **Reports** dashboard, and Settings (saving restarts
+the detector). Embed the preview elsewhere (e.g. Home Assistant) with a
+revocable stream token from **Settings → Integrations**:
+`http://<pi-ip>:8000/api/stream.mjpeg?token=...`.
+
+### Reports
+
+The **Reports** page (linked from the nav, next to Events) summarises traffic
+over a selectable window — Today, 7 days, 30 days, or All. It shows vehicle
+count, median / 85th-percentile / max speed (in your display units), plus
+inline-SVG charts for the speed distribution, traffic by hour of day, the daily
+volume trend, and a per-direction breakdown. No frontend build step — the charts
+are server-rendered SVG.
+
+### Alerts
+
+curbcam can push a notification whenever a vehicle is detected at or above a
+speed you choose. Configure everything under **Settings → Alerts**:
+
+- **Master switch + threshold.** Alerts are off by default. Set an *Alert speed*
+  (independent of the recording threshold — usually set it higher) so only the
+  vehicles you care about fire a notification.
+- **Channels.** Three independent transports, each separately toggleable:
+  - **ntfy** — push to your phone via an [ntfy](https://ntfy.sh) topic
+    (default server `https://ntfy.sh`; the alert links back to your Events page).
+  - **Webhook** — POST a JSON body (event id, speed in km/h and display units,
+    direction, timestamp, link) to any URL.
+  - **MQTT** — publish the same JSON to an MQTT broker (e.g. for Home Assistant).
+    **Requires a broker** — set the host, port (default `1883`), topic, and
+    optional username/password.
+- **Per-channel cooldown.** Each channel has a *cooldown (seconds)* to throttle
+  notifications. `0` fires on every qualifying event (the right setting for
+  MQTT → Home Assistant); the HTTP channels default to `60`.
+
+No extra install step for alerts — `paho-mqtt` (the MQTT client) ships in the
+Docker image and in the `[dev]` extra.
 
 ### Mounting for best accuracy
 

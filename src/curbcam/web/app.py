@@ -22,6 +22,7 @@ from curbcam.web.routes import (
     events,
     health,
     pages,
+    reports,
     settings,
     setup,
     stream,
@@ -38,13 +39,19 @@ async def _stats_loop(supervisor: Supervisor) -> None:
 def create_app(supervisor: Supervisor) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+        from curbcam.alerts.dispatcher import AlertDispatcher
+
         supervisor.bus.bind_loop(asyncio.get_running_loop())
         supervisor.start()
         stats_task = asyncio.create_task(_stats_loop(supervisor))
+        dispatcher = AlertDispatcher(supervisor.config_store, supervisor.bus)
+        alerts_task = asyncio.create_task(dispatcher.run())
         try:
             yield
         finally:
             stats_task.cancel()
+            alerts_task.cancel()
+            await dispatcher.aclose()
             supervisor.stop()
 
     app = FastAPI(title="curbcam", lifespan=lifespan)
@@ -59,6 +66,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(health.router)
     app.include_router(stream.router)
     app.include_router(events.router)
+    app.include_router(reports.router)
     app.include_router(settings.router)
     app.include_router(calibration.router)
     app.include_router(crop.router)

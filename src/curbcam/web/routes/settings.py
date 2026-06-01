@@ -30,10 +30,20 @@ def _set_nested(d: dict[str, Any], dotted: str, value: object) -> None:
     d.setdefault(section, {})[field] = value
 
 
+BOOLEAN_KEYS = {
+    "alerts.enabled",
+    "alerts.ntfy_enabled",
+    "alerts.webhook_enabled",
+    "alerts.mqtt_enabled",
+}
+
+
 def _coerce(key: str, value: str) -> object:
     if key == "camera.resolution":
         w, h = value.lower().split("x", 1)
         return [int(w), int(h)]
+    if key in BOOLEAN_KEYS:
+        return value == "true"  # persist a real YAML bool, not the string "true"
     return value  # Pydantic coerces numeric strings; selects/text pass through
 
 

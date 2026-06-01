@@ -1,0 +1,50 @@
+<div id="reports-dashboard">
+  <div class="report-windows">
+    {% for w in windows %}
+    <button type="button" class="btn {% if w == window %}btn-primary{% endif %}"
+            hx-get="/api/reports?window={{ w }}" hx-target="#reports-dashboard" hx-swap="outerHTML">
+      {{ {"today": "Today", "7d": "7 days", "30d": "30 days", "all": "All"}[w] }}
+    </button>
+    {% endfor %}
+  </div>
+
+  {% if summary.count == 0 %}
+  <p class="empty">No events in this window yet.</p>
+  {% else %}
+  <div class="cards report-summary">
+    <div class="card"><span class="stat">{{ summary.count }}</span><span class="label">vehicles</span></div>
+    <div class="card"><span class="stat">{{ summary.median }}</span><span class="label">median {{ units }}</span></div>
+    <div class="card"><span class="stat">{{ summary.p85 }}</span><span class="label">85th pct {{ units }}</span></div>
+    <div class="card"><span class="stat">{{ summary.max }}</span><span class="label">max {{ units }}</span></div>
+  </div>
+
+  <h3>Speed distribution ({{ units }})</h3>
+  <svg class="chart bars" viewBox="0 0 {{ histogram|length * 10 }} 100" preserveAspectRatio="none" role="img">
+    {% for b in histogram %}
+    <rect x="{{ loop.index0 * 10 + 1 }}" y="{{ 100 - b.pct }}" width="8" height="{{ b.pct }}"></rect>
+    {% endfor %}
+  </svg>
+  <div class="axis">{% for b in histogram %}<span>{{ b.label }}</span>{% endfor %}</div>
+
+  <h3>By hour of day{% if busiest_hour is not none %} — busiest {{ busiest_hour }}:00{% endif %}</h3>
+  <svg class="chart bars" viewBox="0 0 240 100" preserveAspectRatio="none" role="img">
+    {% for h in hours %}
+    <rect x="{{ h.hour * 10 + 1 }}" y="{{ 100 - h.pct }}" width="8" height="{{ h.pct }}"></rect>
+    {% endfor %}
+  </svg>
+
+  {% if daily|length > 1 %}
+  <h3>Daily volume</h3>
+  <svg class="chart trend" viewBox="0 0 100 100" preserveAspectRatio="none" role="img">
+    <polyline points="{{ trend_points }}" fill="none" stroke="currentColor" stroke-width="1"></polyline>
+  </svg>
+  {% endif %}
+
+  <h3>By direction</h3>
+  <table class="report-directions">
+    <tr><th></th><th>Vehicles</th><th>Median {{ units }}</th></tr>
+    <tr><td>Left → right</td><td>{{ by_direction.L2R.count }}</td><td>{{ by_direction.L2R.median }}</td></tr>
+    <tr><td>Right → left</td><td>{{ by_direction.R2L.count }}</td><td>{{ by_direction.R2L.median }}</td></tr>
+  </table>
+  {% endif %}
+</div>
