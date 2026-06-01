@@ -2,6 +2,12 @@
   {% for group_name, fields in groups.items() %}
   <fieldset>
     <legend>{{ group_name|capitalize }}</legend>
+    {% if group_name == "alerts" %}
+    <p class="help">Off by default. For phone alerts, most people just fill in the
+      <strong>ntfy</strong> fields and leave Webhook and MQTT alone (those are for
+      custom integrations and Home Assistant). Set an <em>Alert speed</em> so only
+      faster vehicles notify you.</p>
+    {% endif %}
     {% for f in fields %}
     <div class="setting">
       <label for="{{ f.key }}">{{ f.label }}</label>
