@@ -44,3 +44,6 @@ _ux/
 .codex-review-*.txt
 .opencode-review-*.txt
 .pr-review-out/
+
+# Local picamera frame-replay fixtures (file:/frames dev source)
+frames/
