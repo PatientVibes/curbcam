@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any
 
 from curbcam.config.schema import AlertsSettings
@@ -23,4 +24,11 @@ def build_payload(settings: AlertsSettings, event: dict[str, Any], units: str) -
 
 
 def build_text(payload: dict[str, Any]) -> str:
-    return f"{payload['speed_display']:.0f} {payload['units']} {payload['direction']}".strip()
+    base = f"{payload['speed_display']:.0f} {payload['units']} {payload['direction']}".strip()
+    ts = payload.get("ts_utc", "")
+    if ts:
+        try:
+            return f"{base} at {dt.datetime.fromisoformat(ts).strftime('%H:%M')}"
+        except ValueError:
+            pass  # unparseable timestamp -> omit it rather than fail the alert
+    return base

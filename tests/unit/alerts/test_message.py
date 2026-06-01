@@ -20,6 +20,15 @@ def test_build_payload_blank_base_url_omits_link() -> None:
     assert p["url"] == ""
 
 
-def test_build_text_is_speed_units_direction() -> None:
+def test_build_text_includes_speed_units_direction_and_time() -> None:
     s = AlertsSettings(base_url="")
-    assert build_text(build_payload(s, EVENT, "mph")) == "38 mph L2R"
+    assert build_text(build_payload(s, EVENT, "mph")) == "38 mph L2R at 19:14"
+
+
+def test_build_text_omits_time_when_ts_missing_or_unparseable() -> None:
+    s = AlertsSettings(base_url="")
+    assert (
+        build_text(build_payload(s, {"speed_kph": 61.2, "direction": "L2R"}, "mph")) == "38 mph L2R"
+    )
+    bad = build_payload(s, {"speed_kph": 61.2, "direction": "L2R", "ts_utc": "not-a-date"}, "mph")
+    assert build_text(bad) == "38 mph L2R"
