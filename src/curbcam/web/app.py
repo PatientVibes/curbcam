@@ -22,6 +22,7 @@ from curbcam.web.routes import (
     events,
     health,
     pages,
+    reports,
     settings,
     setup,
     stream,
@@ -65,6 +66,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(health.router)
     app.include_router(stream.router)
     app.include_router(events.router)
+    app.include_router(reports.router)
     app.include_router(settings.router)
     app.include_router(calibration.router)
     app.include_router(crop.router)
