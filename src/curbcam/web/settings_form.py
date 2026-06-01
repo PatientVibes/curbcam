@@ -27,6 +27,25 @@ ADVANCED: list[tuple[str, str]] = [
     ("retention.max_total_disk_mb", "number"),
     ("server.log_level", "select:DEBUG,INFO,WARNING"),
 ]
+ALERTS: list[tuple[str, str]] = [
+    ("alerts.enabled", "bool"),
+    ("alerts.min_speed_kph", "number"),
+    ("alerts.base_url", "text"),
+    ("alerts.ntfy_enabled", "bool"),
+    ("alerts.ntfy_server", "text"),
+    ("alerts.ntfy_topic", "text"),
+    ("alerts.ntfy_cooldown_s", "number"),
+    ("alerts.webhook_enabled", "bool"),
+    ("alerts.webhook_url", "text"),
+    ("alerts.webhook_cooldown_s", "number"),
+    ("alerts.mqtt_enabled", "bool"),
+    ("alerts.mqtt_host", "text"),
+    ("alerts.mqtt_port", "number"),
+    ("alerts.mqtt_topic", "text"),
+    ("alerts.mqtt_username", "text"),
+    ("alerts.mqtt_password", "text"),
+    ("alerts.mqtt_cooldown_s", "number"),
+]
 
 
 def _env_key(dotted: str) -> str:
@@ -49,16 +68,31 @@ def _descriptor(
     raw: dict[str, Any], dotted: str, kind: str, errors: dict[str, str]
 ) -> dict[str, Any]:
     label, help_text = FIELD_LABELS.get(dotted, (dotted, ""))
-    options = kind.split(":", 1)[1].split(",") if kind.startswith("select:") else []
-    return {
+    base = {
         "key": dotted,
         "label": label,
         "help": help_text,
+        "env": os.environ.get(_env_key(dotted)) is not None,
+        "error": errors.get(dotted),
+    }
+    if kind == "bool":
+        # Render as a true/false <select>: a select always submits a value,
+        # whereas an unchecked checkbox submits nothing and would leave the
+        # boolean stuck at its previous value (settings.py overlays submitted
+        # keys onto the loaded raw config).
+        truthy = str(_get(raw, dotted)).lower() == "true"
+        return {
+            **base,
+            "kind": "select",
+            "options": ["true", "false"],
+            "value": "true" if truthy else "false",
+        }
+    options = kind.split(":", 1)[1].split(",") if kind.startswith("select:") else []
+    return {
+        **base,
         "kind": "select" if kind.startswith("select:") else kind,
         "options": options,
         "value": _format_value(_get(raw, dotted), kind),
-        "env": os.environ.get(_env_key(dotted)) is not None,
-        "error": errors.get(dotted),
     }
 
 
@@ -69,4 +103,5 @@ def build_groups(
     return {
         "primary": [_descriptor(raw, k, kind, errors) for k, kind in PRIMARY],
         "advanced": [_descriptor(raw, k, kind, errors) for k, kind in ADVANCED],
+        "alerts": [_descriptor(raw, k, kind, errors) for k, kind in ALERTS],
     }
