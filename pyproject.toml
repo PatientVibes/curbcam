@@ -24,6 +24,7 @@ dependencies = [
     "argon2-cffi>=23.1",
     "paho-mqtt>=2.1",
     "httpx>=0.27",   # AlertDispatcher posts ntfy/webhook alerts at runtime
+    "tzdata",        # ZoneInfo data for local-time Reports/alerts in the slim image
 ]
 
 [project.optional-dependencies]

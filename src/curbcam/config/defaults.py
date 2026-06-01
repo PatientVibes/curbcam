@@ -78,6 +78,13 @@ FIELD_LABELS: dict[str, tuple[str, str]] = {
         "lower it to capture slower movers. Set it too high and you'll miss real "
         "traffic.",
     ),
+    "server.timezone": (
+        "Timezone",
+        "Your local timezone as an IANA name, e.g. America/New_York or "
+        "Europe/London. Used for the Reports page (hour-of-day, daily totals, the "
+        "Today window) and the time shown in alerts. Leave blank to use UTC. The "
+        "live event feed always shows your browser's local time.",
+    ),
     "server.log_level": (
         "Log level",
         "How much detail curbcam writes to its log. INFO is the normal setting; DEBUG "
