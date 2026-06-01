@@ -1,0 +1,26 @@
+{% if cameras %}
+<form hx-post="/api/setup/camera" hx-target="#camera-result" hx-swap="innerHTML">
+  <select name="source" required>
+    {% for cam in cameras %}
+    <option value="{{ cam.source }}">{{ cam.label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Use this camera</button>
+</form>
+<details>
+  <summary>Enter a source manually (RTSP, file, or other)</summary>
+  <form hx-post="/api/setup/camera" hx-target="#camera-result" hx-swap="innerHTML">
+    <input name="source" placeholder="rtsp://… | file:./fixtures | usb:0" required>
+    <button type="submit">Use this camera</button>
+  </form>
+</details>
+{% else %}
+<p>No cameras detected automatically. Enter a source manually:</p>
+<form hx-post="/api/setup/camera" hx-target="#camera-result" hx-swap="innerHTML">
+  <input name="source" placeholder="picamera2:0 | usb:0 | rtsp://… | file:./fixtures" required>
+  <button type="submit">Use this camera</button>
+</form>
+{% endif %}
+<button type="button" hx-get="/api/setup/cameras" hx-target="#camera-picker" hx-swap="innerHTML">
+  Re-scan
+</button>

@@ -5,10 +5,9 @@
   <label><input type="checkbox" id="ack"> I understand</label>
 
   <h2>3 · Camera source</h2>
-  <form hx-post="/api/setup/camera" hx-target="#camera-result" hx-swap="innerHTML">
-    <input name="source" placeholder="picamera2:0 | usb:0 | rtsp://... | file:./fixtures" required>
-    <button type="submit">Use this camera</button>
-  </form>
+  <div id="camera-picker" hx-get="/api/setup/cameras" hx-trigger="load" hx-swap="innerHTML">
+    <p>Detecting cameras…</p>
+  </div>
   <span id="camera-result"></span>
 
   <h2>4 · Confirm preview</h2>
