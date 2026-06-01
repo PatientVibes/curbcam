@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from starlette.concurrency import run_in_threadpool
@@ -26,6 +28,22 @@ def setup_password(
     if sup.auth.has_password():
         raise HTTPException(status_code=409, detail="Admin password already set")
     sup.auth.set_password(password)
+    resp = templates.TemplateResponse(request, "setup/configure.html", {})
+    issue_session(sup, resp)
+    return resp
+
+
+@router.post("/api/setup/login", response_class=HTMLResponse)
+def setup_login(
+    request: Request,
+    password: str = Form(...),
+    sup: Supervisor = Depends(get_supervisor),
+) -> HTMLResponse:
+    if not sup.auth.has_password():
+        raise HTTPException(status_code=409, detail="Admin password is not set")
+    if not sup.auth.verify_password(password):
+        time.sleep(0.25)
+        raise HTTPException(status_code=401, detail="Invalid password")
     resp = templates.TemplateResponse(request, "setup/configure.html", {})
     issue_session(sup, resp)
     return resp

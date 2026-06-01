@@ -22,6 +22,22 @@ def test_setup_password_rejected_once_set(client, supervisor) -> None:  # type: 
     assert supervisor.auth.verify_password("attacker") is False
 
 
+def test_setup_shows_login_form_when_password_exists_without_session(client, supervisor) -> None:  # type: ignore[no-untyped-def]
+    supervisor.auth.set_password("s3cret")
+    resp = client.get("/setup")
+    assert resp.status_code == 200
+    assert "Admin login required" in resp.text
+    assert 'hx-post="/api/setup/login"' in resp.text
+
+
+def test_setup_login_sets_session_and_returns_configure(client, supervisor) -> None:  # type: ignore[no-untyped-def]
+    supervisor.auth.set_password("s3cret")
+    resp = client.post("/api/setup/login", data={"password": "s3cret"})
+    assert resp.status_code == 200
+    assert "curbcam_session" in resp.cookies
+    assert 'name="source"' in resp.text
+
+
 def test_setup_camera_saves_source_and_restarts(client, supervisor, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     supervisor.auth.set_password("s3cret")
     client.post("/api/auth/login", data={"password": "s3cret"})

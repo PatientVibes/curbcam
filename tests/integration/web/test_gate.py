@@ -19,6 +19,12 @@ def test_login_endpoint_is_exempt(client: TestClient) -> None:
     assert resp.status_code == 401
 
 
+def test_stream_endpoint_is_exempt_from_first_run_redirect(client: TestClient) -> None:
+    resp = client.get("/api/stream.mjpeg", follow_redirects=False)
+    # Gate does not redirect; stream auth enforces session/token.
+    assert resp.status_code == 401
+
+
 def test_configured_does_not_redirect(client: TestClient, supervisor) -> None:  # type: ignore[no-untyped-def]
     supervisor.auth.set_password("x")
     supervisor.calibrations.save_new_active(40.0, 40.0, 4000.0, "[]")

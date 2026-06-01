@@ -2,6 +2,8 @@
 {% block content %}
 {% if need_password %}
   {% include "setup/password.html" %}
+{% elif need_login %}
+  {% include "setup/login.html" %}
 {% else %}
   {% include "setup/configure.html" %}
 {% endif %}
