@@ -11,6 +11,17 @@
           <option value="{{ opt }}" {% if opt == f.value %}selected{% endif %}>{{ opt }}</option>
           {% endfor %}
         </select>
+      {% elif f.kind == "camera-source" %}
+        {# Text input keeps free-form sources (RTSP/file/current value) while the
+           datalist offers auto-detected cameras as suggestions. The datalist is
+           hx-loaded so discovery (ioctls/picamera2) doesn't run on every save. #}
+        <input id="{{ f.key }}" name="{{ f.key }}" value="{{ f.value }}"
+               list="camera-source-options" {% if f.env %}readonly{% endif %}>
+        {% if not f.env %}
+        <datalist id="camera-source-options"
+                  hx-get="/api/cameras" hx-trigger="load" hx-target="this" hx-swap="innerHTML">
+        </datalist>
+        {% endif %}
       {% else %}
         <input id="{{ f.key }}" name="{{ f.key }}" value="{{ f.value }}"
                {% if f.kind == "number" %}inputmode="decimal"{% endif %}

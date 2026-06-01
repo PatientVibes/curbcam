@@ -13,7 +13,7 @@ from typing import Any
 from curbcam.config.defaults import FIELD_LABELS
 
 PRIMARY: list[tuple[str, str]] = [
-    ("camera.source", "text"),
+    ("camera.source", "camera-source"),
     ("camera.resolution", "resolution"),
     ("camera.fps_target", "number"),
     ("server.units", "select:kph,mph"),
