@@ -19,6 +19,7 @@ _EXEMPT_PREFIXES = (
     "/api/auth/login",
     "/api/calibration",
     "/api/crop",
+    "/api/stream.mjpeg",
     "/static",
     "/healthz",
 )

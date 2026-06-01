@@ -3,6 +3,8 @@
 <h1>curbcam setup</h1>
 {% if need_password %}
   {% include "setup/password.html" %}
+{% elif need_login %}
+  {% include "setup/login.html" %}
 {% else %}
   {% include "setup/configure.html" %}
 {% endif %}
