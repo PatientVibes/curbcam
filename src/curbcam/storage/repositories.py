@@ -8,12 +8,11 @@ invariant a single function call.
 from __future__ import annotations
 
 import datetime as dt
-import math
 from dataclasses import dataclass
 
 from sqlalchemy import and_, or_, update
 
-from curbcam.localtime import to_local
+from curbcam.localtime import now_utc, to_local
 from curbcam.storage.db import Database
 from curbcam.storage.models import Calibration, Event
 
@@ -25,26 +24,6 @@ class EventFilter:
     min_speed_kph: float | None = None
     max_speed_kph: float | None = None
     direction: str | None = None
-
-
-@dataclass
-class ReportSummary:
-    count: int
-    median_kph: float
-    p85_kph: float
-    max_kph: float
-
-
-def _percentile(sorted_vals: list[float], pct: float) -> float:
-    """Linear-interpolated percentile (numpy 'linear' method)."""
-    if not sorted_vals:
-        return 0.0
-    k = (len(sorted_vals) - 1) * (pct / 100.0)
-    lo = math.floor(k)
-    hi = math.ceil(k)
-    if lo == hi:
-        return sorted_vals[int(k)]
-    return sorted_vals[lo] * (hi - k) + sorted_vals[hi] * (k - lo)
 
 
 class CalibrationRepo:
@@ -64,7 +43,7 @@ class CalibrationRepo:
             # Deactivate any currently-active row(s).
             s.execute(update(Calibration).where(Calibration.active.is_(True)).values(active=False))
             cal = Calibration(
-                created_utc=dt.datetime.now(dt.UTC).replace(tzinfo=None),
+                created_utc=now_utc(),
                 mm_per_px_l2r=mm_per_px_l2r,
                 mm_per_px_r2l=mm_per_px_r2l,
                 reference_distance_mm=reference_distance_mm,
@@ -158,27 +137,17 @@ class EventRepo:
             s.commit()
             return paths
 
-    def speeds_since(self, start: dt.datetime | None, direction: str | None = None) -> list[float]:
-        """Sorted kph speeds in the window. Public so the reports view-model can
-        bucket the histogram in display units (mph/kph) rather than raw kph."""
+    def speed_dirs_since(self, start: dt.datetime | None) -> list[tuple[float, str]]:
+        """(speed_kph, direction) for every event in the window, in ONE scan.
+
+        The reports view-model derives the summary, the display-unit histogram,
+        and the per-direction breakdown from this single list instead of
+        re-querying the speed column for each."""
         with self._db.session() as s:
-            q = s.query(Event.speed_kph)
+            q = s.query(Event.speed_kph, Event.direction)
             if start is not None:
                 q = q.filter(Event.ts_utc >= start)
-            if direction is not None:
-                q = q.filter(Event.direction == direction)
-            return sorted(float(r[0]) for r in q.all())
-
-    def summary(self, start: dt.datetime | None) -> ReportSummary:
-        speeds = self.speeds_since(start)
-        if not speeds:
-            return ReportSummary(0, 0.0, 0.0, 0.0)
-        return ReportSummary(
-            count=len(speeds),
-            median_kph=_percentile(speeds, 50),
-            p85_kph=_percentile(speeds, 85),
-            max_kph=speeds[-1],
-        )
+            return [(float(sp), d) for sp, d in q.all()]
 
     def _timestamps_since(self, start: dt.datetime | None) -> list[dt.datetime]:
         with self._db.session() as s:
@@ -203,10 +172,3 @@ class EventRepo:
             key = to_local(tsu, tz).date().isoformat()
             counts[key] = counts.get(key, 0) + 1
         return sorted(counts.items())
-
-    def by_direction(self, start: dt.datetime | None) -> dict[str, tuple[int, float]]:
-        out: dict[str, tuple[int, float]] = {}
-        for direction in ("L2R", "R2L"):
-            speeds = self.speeds_since(start, direction)
-            out[direction] = (len(speeds), _percentile(speeds, 50) if speeds else 0.0)
-        return out

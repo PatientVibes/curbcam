@@ -17,8 +17,9 @@ from starlette.concurrency import run_in_threadpool
 
 from curbcam.camera.discovery import discover_cameras
 from curbcam.config.schema import Settings
+from curbcam.localtime import now_utc
 from curbcam.web.deps import get_supervisor, require_session
-from curbcam.web.settings_form import build_groups
+from curbcam.web.settings_form import BOOLEAN_KEYS, build_groups
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
 
@@ -28,14 +29,6 @@ router = APIRouter()
 def _set_nested(d: dict[str, Any], dotted: str, value: object) -> None:
     section, field = dotted.split(".", 1)
     d.setdefault(section, {})[field] = value
-
-
-BOOLEAN_KEYS = {
-    "alerts.enabled",
-    "alerts.ntfy_enabled",
-    "alerts.webhook_enabled",
-    "alerts.mqtt_enabled",
-}
 
 
 def _coerce(key: str, value: str) -> object:
@@ -138,7 +131,7 @@ def purge_events(
 ) -> Response:
     # ge=1 is enforced server-side: days<=0 would push the cutoff to now/future
     # and delete ALL events, not just old ones (the form's min=1 is client-only).
-    cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - dt.timedelta(days=days)
+    cutoff = now_utc() - dt.timedelta(days=days)
     # Delete rows AND their media files — a privacy button that left the JPEGs
     # on disk would defeat its purpose (spec §15).
     for rel in sup.events.delete_older_than(cutoff):

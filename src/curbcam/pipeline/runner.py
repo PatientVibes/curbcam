@@ -11,7 +11,6 @@ collaborators. The detector knows nothing about storage; storage knows
 nothing about cameras.
 """
 
-import datetime as dt
 import logging
 import threading
 import time
@@ -26,6 +25,7 @@ from curbcam.detector.calibration import speed_from_track
 from curbcam.detector.motion import find_motion
 from curbcam.detector.tracker import Tracker
 from curbcam.detector.types import Detection
+from curbcam.localtime import now_utc
 from curbcam.pipeline.events import EventBus, EventEnvelope
 from curbcam.storage.db import Database
 from curbcam.storage.media import MediaWriter
@@ -265,7 +265,7 @@ class PipelineRunner:
             log.info("Track below min_event_speed_kph (%.1f); skipping", speed)
             return
 
-        ts_utc = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+        ts_utc = now_utc()
         with self._db.session() as s:
             ev = Event(
                 ts_utc=ts_utc,

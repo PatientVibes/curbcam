@@ -17,6 +17,12 @@ import datetime as dt
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
+def now_utc() -> dt.datetime:
+    """Current time as a naive UTC datetime — the form every timestamp is stored
+    in. Centralized so the convention has one definition to change."""
+    return dt.datetime.now(dt.UTC).replace(tzinfo=None)
+
+
 def zone(tz_name: str) -> dt.tzinfo:
     """Resolve an IANA timezone name to a tzinfo, falling back to UTC."""
     if not tz_name:

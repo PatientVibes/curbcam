@@ -7,7 +7,7 @@ from typing import Any
 
 from curbcam.config.schema import AlertsSettings
 from curbcam.localtime import to_local
-from curbcam.web.units import kph_to_display
+from curbcam.web.units import display_speed
 
 
 def build_payload(settings: AlertsSettings, event: dict[str, Any], units: str) -> dict[str, Any]:
@@ -16,7 +16,7 @@ def build_payload(settings: AlertsSettings, event: dict[str, Any], units: str) -
     return {
         "event_id": event.get("id"),
         "speed_kph": round(speed_kph, 1),
-        "speed_display": round(kph_to_display(speed_kph, units), 1),
+        "speed_display": display_speed(speed_kph, units),
         "units": units,
         "direction": event.get("direction", ""),
         "ts_utc": event.get("ts_utc", ""),

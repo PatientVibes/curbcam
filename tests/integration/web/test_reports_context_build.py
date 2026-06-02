@@ -107,9 +107,9 @@ def test_build_context_uses_configured_timezone_for_hours(supervisor) -> None:  
 
 
 def test_daily_trend_fills_zero_event_days(supervisor) -> None:  # type: ignore[no-untyped-def]
-    import curbcam.web.reports as reports_mod
+    from curbcam.localtime import now_utc
 
-    now = reports_mod._now_utc()
+    now = now_utc()
     # Events on two non-adjacent days inside a 7-day window.
     for delta in (1, 4):
         supervisor.events.save(
