@@ -1,7 +1,17 @@
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from curbcam.web.reports import window_start
+import pytest
+
+from curbcam.web.reports import percentile, window_start
+
+
+def test_percentile_linear_interpolation() -> None:
+    vals = [20.0, 25.0, 30.0, 35.0, 40.0, 45.0]
+    assert percentile(vals, 50) == pytest.approx(32.5)  # between 30 and 35
+    assert percentile(vals, 85) == pytest.approx(41.25)  # between 40 and 45
+    assert percentile(vals, 100) == 45.0
+    assert percentile([], 50) == 0.0
 
 
 def test_window_start_mappings_utc() -> None:

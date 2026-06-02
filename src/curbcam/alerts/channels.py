@@ -51,10 +51,21 @@ class MqttPublisher:
             await asyncio.to_thread(self._client.connect, self._host, self._port)
             self._client.loop_start()
             self._started = True
-        self._client.publish(topic, payload)
+        # Check paho's return code so a dropped/refused connection surfaces as an
+        # exception (caught + logged by the dispatcher, and — importantly — the
+        # channel's cooldown is NOT advanced, so the next event retries). Without
+        # this, publish() to a dead broker no-ops and alerts vanish silently.
+        info = self._client.publish(topic, payload)
+        if getattr(info, "rc", 0) != 0:  # 0 == MQTT_ERR_SUCCESS
+            raise RuntimeError(f"MQTT publish failed (rc={info.rc})")
 
-    def close(self) -> None:
+    async def aclose(self) -> None:
+        # loop_stop() joins paho's network thread and disconnect() does socket
+        # I/O — both can block, so offload them off the event loop.
         if self._started:
-            self._client.loop_stop()
-            self._client.disconnect()
+            await asyncio.to_thread(self._stop)
             self._started = False
+
+    def _stop(self) -> None:
+        self._client.loop_stop()
+        self._client.disconnect()

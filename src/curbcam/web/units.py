@@ -15,6 +15,12 @@ def kph_to_display(kph: float, units: str) -> float:
     return kph if units == "kph" else kph / _KPH_PER_MPH
 
 
+def display_speed(kph: float, units: str, ndigits: int = 1) -> float:
+    """Speed in display units, rounded — the canonical form for the events feed,
+    reports, and alert payloads (so they never disagree on precision)."""
+    return round(kph_to_display(kph, units), ndigits)
+
+
 def format_speed(kph: float, units: str) -> str:
     return f"{kph_to_display(kph, units):.1f} {units}"
 

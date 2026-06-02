@@ -16,7 +16,7 @@ from curbcam.web.deps import get_supervisor, require_session
 from curbcam.web.streams import sse_generator
 from curbcam.web.supervisor import Supervisor
 from curbcam.web.templating import templates
-from curbcam.web.units import display_to_kph, kph_to_display
+from curbcam.web.units import display_speed, display_to_kph
 
 router = APIRouter()
 
@@ -135,7 +135,7 @@ def api_events_csv(
                     [
                         e.id,
                         f"{e.ts_utc.isoformat()}Z",
-                        round(kph_to_display(float(e.speed_kph), units), 1),
+                        display_speed(float(e.speed_kph), units),
                         units,
                         e.direction,
                         e.frame_count,

@@ -11,6 +11,27 @@ import os
 from typing import Any
 
 from curbcam.config.defaults import FIELD_LABELS
+from curbcam.config.schema import Settings
+
+
+def _boolean_keys() -> frozenset[str]:
+    """Dotted keys of every bool field, read from the Pydantic schema so the
+    form (true/false select) and the save path (_coerce) share one source of
+    truth — no hand-maintained list to drift from the model."""
+    out: set[str] = set()
+    for section, field in Settings.model_fields.items():
+        sub_fields = getattr(field.annotation, "model_fields", None)
+        if sub_fields:
+            for name, info in sub_fields.items():
+                if info.annotation is bool:
+                    out.add(f"{section}.{name}")
+    return frozenset(out)
+
+
+# Single source of truth for "which settings are booleans", consumed here (to
+# render a true/false <select>) and by routes.settings._coerce (to persist a
+# real YAML bool).
+BOOLEAN_KEYS = _boolean_keys()
 
 PRIMARY: list[tuple[str, str]] = [
     ("camera.source", "camera-source"),
@@ -76,7 +97,7 @@ def _descriptor(
         "env": os.environ.get(_env_key(dotted)) is not None,
         "error": errors.get(dotted),
     }
-    if kind == "bool":
+    if dotted in BOOLEAN_KEYS:
         # Render as a true/false <select>: a select always submits a value,
         # whereas an unchecked checkbox submits nothing and would leave the
         # boolean stuck at its previous value (settings.py overlays submitted
