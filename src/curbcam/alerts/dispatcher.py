@@ -80,12 +80,35 @@ class AlertDispatcher:
         data = build_payload(s, payload, self._units)
         text = build_text(data, self._tz)
         now = self._clock()
-        if s.ntfy_enabled and s.ntfy_topic and self._due("ntfy", s.ntfy_cooldown_s, now):
-            await self._fire("ntfy", send_ntfy(self._client, s, text, data["url"]), now)
-        if s.webhook_enabled and s.webhook_url and self._due("webhook", s.webhook_cooldown_s, now):
-            await self._fire("webhook", send_webhook(self._client, s, data), now)
-        if s.mqtt_enabled and s.mqtt_host and self._due("mqtt", s.mqtt_cooldown_s, now):
-            await self._fire("mqtt", self._publish_mqtt(s, data), now)
+        # (name, channel-on, required-target, cooldown, coroutine factory). The
+        # factory defers building the coroutine until we actually fire, so no
+        # unawaited coroutine is created for a skipped channel.
+        channels: list[tuple[str, bool, str, int, Callable[[], Any]]] = [
+            (
+                "ntfy",
+                s.ntfy_enabled,
+                s.ntfy_topic,
+                s.ntfy_cooldown_s,
+                lambda: send_ntfy(self._client, s, text, data["url"]),
+            ),
+            (
+                "webhook",
+                s.webhook_enabled,
+                s.webhook_url,
+                s.webhook_cooldown_s,
+                lambda: send_webhook(self._client, s, data),
+            ),
+            (
+                "mqtt",
+                s.mqtt_enabled,
+                s.mqtt_host,
+                s.mqtt_cooldown_s,
+                lambda: self._publish_mqtt(s, data),
+            ),
+        ]
+        for name, enabled, target, cooldown_s, make in channels:
+            if enabled and target and self._due(name, cooldown_s, now):
+                await self._fire(name, make(), now)
 
     def _due(self, name: str, cooldown_s: int, now: float) -> bool:
         last = self._last_fired.get(name)
@@ -102,7 +125,7 @@ class AlertDispatcher:
         sig = (s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password)
         if self._mqtt is None or self._mqtt_sig != sig:
             if self._mqtt is not None:
-                self._mqtt.close()
+                await self._mqtt.aclose()
             self._mqtt = self._mqtt_factory(
                 s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password
             )
@@ -111,6 +134,6 @@ class AlertDispatcher:
 
     async def aclose(self) -> None:
         if self._mqtt is not None:
-            self._mqtt.close()
+            await self._mqtt.aclose()
         if self._owns_client:
             await self._client.aclose()

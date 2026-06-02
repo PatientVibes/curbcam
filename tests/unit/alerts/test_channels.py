@@ -46,6 +46,9 @@ def test_mqtt_publisher_uses_loop_start_and_nonblocking_publish() -> None:
     published: list[tuple[str, str]] = []
     events: list[str] = []
 
+    class _Info:
+        rc = 0
+
     class _FakePaho:
         def username_pw_set(self, u, p):  # type: ignore[no-untyped-def]
             events.append("auth")
@@ -58,6 +61,7 @@ def test_mqtt_publisher_uses_loop_start_and_nonblocking_publish() -> None:
 
         def publish(self, topic, payload):  # type: ignore[no-untyped-def]
             published.append((topic, payload))
+            return _Info()
 
         def loop_stop(self):  # type: ignore[no-untyped-def]
             events.append("loop_stop")
@@ -71,5 +75,26 @@ def test_mqtt_publisher_uses_loop_start_and_nonblocking_publish() -> None:
     asyncio.run(pub.publish("curbcam/events", json.dumps({"a": 1})))
     assert "connect:broker:1883" in events and "loop_start" in events
     assert published == [("curbcam/events", '{"a": 1}')]
-    pub.close()
+    asyncio.run(pub.aclose())
     assert "loop_stop" in events and "disconnect" in events
+
+
+def test_mqtt_publish_raises_on_nonzero_rc() -> None:
+    import asyncio
+
+    class _Info:
+        rc = 1  # MQTT_ERR_* (not success) — e.g. broker disconnected
+
+    class _FakePaho:
+        def connect(self, host, port):  # type: ignore[no-untyped-def]
+            pass
+
+        def loop_start(self):  # type: ignore[no-untyped-def]
+            pass
+
+        def publish(self, topic, payload):  # type: ignore[no-untyped-def]
+            return _Info()
+
+    pub = MqttPublisher("broker", 1883, "", "", client=_FakePaho())
+    with pytest.raises(RuntimeError):
+        asyncio.run(pub.publish("t", "{}"))
