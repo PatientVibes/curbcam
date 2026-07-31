@@ -39,8 +39,12 @@ consequences:
 
 If the lock does go dirty: `git checkout uv.lock`.
 
-CI sidesteps this by creating the venv explicitly and then using `uv run --no-sync`. Locally,
-`--frozen` is the equivalent.
+CI installs with `uv sync --extra dev --frozen` and then runs each gate with `uv run --no-sync`, so it
+never re-resolves either. **Do not change that back to `uv pip install -e ".[dev]"`** — that ignores
+the lockfile and resolves the newest release of every dev tool at run time, which means a ruff, mypy,
+or pytest release can turn CI red with no code change. It already happened once: ruff 0.16 started
+formatting Python code blocks inside Markdown, which pulled `docs/plans/*.md` and `docs/specs/*.md`
+into scope and failed 6 files that predate the rule.
 
 `uv sync --all-extras` additionally **fails outright on x86_64** — `picamera2` pulls `python-prctl`,
 which needs libcap development headers. There is no reason to install it off-Pi.
