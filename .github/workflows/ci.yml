@@ -26,10 +26,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
-      - name: Create venv + install (dev extras)
-        run: |
-          uv venv --python ${{ matrix.python }}
-          uv pip install -e ".[dev]"
+      # Install from uv.lock, NOT by re-resolving. `uv pip install -e ".[dev]"`
+      # ignores the lockfile and resolves the newest release of every dev tool
+      # at run time, so a tool release could turn CI red with no code change --
+      # which is exactly what happened when ruff 0.16 began formatting Python
+      # code blocks inside Markdown and put docs/**/*.md in scope. Syncing from
+      # the lock pins ruff (and mypy, and pytest) to the reviewed version.
+      - name: Install from lockfile (dev extras)
+        run: uv sync --extra dev --frozen --python ${{ matrix.python }}
 
       - name: Ruff lint
         run: uv run --no-sync ruff check .
