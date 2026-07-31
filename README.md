@@ -57,23 +57,31 @@ only Compose v1, so install the plugin there).
 ```bash
 git clone https://github.com/PatientVibes/curbcam
 cd curbcam
-uv venv && uv pip install -e ".[dev]"
+uv sync --extra dev --frozen
 
-uv run curbcam serve            # http://localhost:8000  (mDNS on; --no-mdns to disable)
+uv run --frozen curbcam serve   # http://localhost:8000  (mDNS on; --no-mdns to disable)
 ```
+
+> **Pass `--frozen`, and do not use `--all-extras`.** The committed `uv.lock` is resolved *with* the
+> Pi-only `picamera2` extra, so every dependency carries a `sys_platform` marker. Re-resolving on a
+> non-Pi machine strips those markers across ~130 entries and degrades the arm64 image. `uv run`
+> re-locks by **default**, so it is the usual source of surprise `uv.lock` churn — and a dirty lock
+> will block `git checkout` / `gh pr checkout` with "local changes would be overwritten". If it does
+> go dirty: `git checkout uv.lock`. Separately, `--all-extras` fails outright on x86_64, because
+> `picamera2` needs libcap development headers. See [CLAUDE.md](CLAUDE.md).
 
 For detector-only work without the web UI:
 
 ```bash
 # Seed a calibration (one-time; the web wizard is the normal path)
-uv run curbcam calibrate \
+uv run --frozen curbcam calibrate \
     --mm-per-px-l2r 41.3 --mm-per-px-r2l 41.5 \
     --reference-distance-mm 4700
 
 # Run the detector against a camera or a directory of frames
-uv run curbcam detect --camera usb:0
-uv run curbcam detect --camera rtsp://user:pw@cam.local/stream
-uv run curbcam detect --camera file:./fixtures/sample_run --once
+uv run --frozen curbcam detect --camera usb:0
+uv run --frozen curbcam detect --camera rtsp://user:pw@cam.local/stream
+uv run --frozen curbcam detect --camera file:./fixtures/sample_run --once
 ```
 
 Events land in `./data/curbcam.sqlite`; thumbnails and full-frame JPEGs in
@@ -176,7 +184,7 @@ it is the lever that would tighten accuracy further.)
 
 ```bash
 export CURBCAM_CAMERA__SOURCE="rtsp://user:pw@host/stream"
-uv run curbcam detect       # no credentials in the YAML config
+uv run --frozen curbcam detect       # no credentials in the YAML config
 ```
 
 ## Before you install
