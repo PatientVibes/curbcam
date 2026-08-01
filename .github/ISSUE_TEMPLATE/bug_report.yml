@@ -1,0 +1,89 @@
+name: Bug report
+description: Something isn't working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Speed measurement depends heavily on how the camera
+        is mounted and calibrated, so the setup questions below usually matter
+        more than they look.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Settings → …
+        2. Set … to …
+        3. A vehicle passes and …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running curbcam?
+      options:
+        - Docker (standard multi-arch image)
+        - Docker (:picamera arm64 image)
+        - From source (uv)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: camera
+    attributes:
+      label: Camera source
+      options:
+        - Raspberry Pi Camera Module (picamera2:)
+        - USB webcam (usb:)
+        - Network camera (rtsp:)
+        - File replay (file:)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The tag or commit you're on. `docker compose images` or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      placeholder: e.g. Raspberry Pi 4 8GB, 64-bit Raspberry Pi OS
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        `docker compose logs --tail=100`, or the terminal output if running from
+        source. Setting the log level to DEBUG under Settings often helps.
+
+        Please redact RTSP credentials and any ntfy topic you want to stay private.
+      render: shell
+
+  - type: checkboxes
+    id: speed-accuracy
+    attributes:
+      label: If this is about speed accuracy
+      description: These are the usual causes, so it saves a round trip to rule them out.
+      options:
+        - label: I have run the calibration wizard (Settings → or /setup/calibrate)
+        - label: The detection region covers only the road, not sky or pavement
+        - label: The camera is roughly perpendicular to the traffic, not angled down the road
+        - label: I know that calibration is a single scale factor, so vehicles in a far lane read differently from a near one

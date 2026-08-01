@@ -18,7 +18,7 @@ def login(
     sup: Supervisor = Depends(get_supervisor),
 ) -> Response:
     if not sup.auth.verify_password(password):
-        time.sleep(0.25)  # fixed delay blunts brute force (spec §6 threat model)
+        time.sleep(0.25)  # fixed delay blunts brute force (web spec §6 threat model)
         raise HTTPException(status_code=401, detail="Invalid password")
     resp = Response(status_code=200)
     issue_session(sup, resp)

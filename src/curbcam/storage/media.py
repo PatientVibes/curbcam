@@ -1,12 +1,12 @@
 """Write event images and thumbnails to the media root.
 
-Layout (matches design spec §7.2):
+Layout (matches design design spec §7.2):
     media/events/YYYY/MM/DD/event_<id>.jpg
     media/thumbs/YYYY/MM/DD/event_<id>.jpg
 
 Annotation: the full image and thumbnail both get a small bottom-strip
 overlay with timestamp + speed + direction arrow. Bounding boxes etc.
-are NOT persisted (see design spec §7.2).
+are NOT persisted (see design design spec §7.2).
 """
 
 from __future__ import annotations

@@ -216,6 +216,27 @@ externally, no data leaves your device, no license-plate OCR is shipped.
 See the design spec's *Responsible Use & Privacy* section (§15) for the
 project's full stance.
 
+## Contributing
+
+Contributions are welcome. **You don't need a Raspberry Pi or a camera** — the
+test suite and the whole web UI run against a file-replay source:
+
+```bash
+uv sync --extra dev --frozen
+uv run --frozen pytest
+uv run --frozen curbcam serve --camera file:./fixtures/sample_run
+```
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening a PR — in particular
+the `--frozen` rule for `uv`, and the three files a new setting has to touch.
+Also: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+[SECURITY.md](SECURITY.md) (please report vulnerabilities privately), and
+[CHANGELOG.md](CHANGELOG.md).
+
+Design docs live in [`docs/specs/`](docs/specs/). They record why things are the
+way they are, and are not kept in sync with the code — where they disagree, the
+code wins.
+
 ## Inspiration
 
 Inspired by [pageauc/speed-camera](https://github.com/pageauc/speed-camera),
@@ -224,4 +245,4 @@ setup, and a single Docker-based deployment path.
 
 ## License
 
-MIT.
+MIT — see [LICENSE](LICENSE).

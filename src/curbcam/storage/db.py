@@ -1,7 +1,7 @@
 """Thin wrapper around SQLAlchemy engine + session factory.
 
 Enables SQLite WAL journaling at first connection so the writer (detector
-thread) and readers (web server, in MVP-2) never block each other.
+thread) and readers (the web server) never block each other.
 """
 
 from __future__ import annotations

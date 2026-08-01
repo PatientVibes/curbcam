@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for events and calibrations.
 
-Direct map of the schema in design spec §7.1.
+Direct map of the schema in design design spec §7.1.
 """
 
 # `from __future__ import annotations` is intentional here (project

@@ -1,7 +1,7 @@
 """Settings save: parse form -> validate -> save raw YAML -> graceful restart.
 
 Env-shadowed fields are read-only in the form and therefore not posted, so
-the saved YAML never bakes in an env value (spec §5).
+the saved YAML never bakes in an env value (web spec §5).
 """
 
 from __future__ import annotations
@@ -133,7 +133,7 @@ def purge_events(
     # and delete ALL events, not just old ones (the form's min=1 is client-only).
     cutoff = now_utc() - dt.timedelta(days=days)
     # Delete rows AND their media files — a privacy button that left the JPEGs
-    # on disk would defeat its purpose (spec §15).
+    # on disk would defeat its purpose (design spec §15).
     for rel in sup.events.delete_older_than(cutoff):
         (sup.media_root / rel).unlink(missing_ok=True)
     return Response(status_code=204)

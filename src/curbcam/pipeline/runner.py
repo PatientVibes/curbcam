@@ -3,10 +3,10 @@
 Two flavours of operation:
 - ``run_until_camera_exhausted()`` — synchronous, used by the CLI's
   ``curbcam detect`` command and by tests with a FileReplaySource.
-- ``run_in_background_thread()`` — used by the MVP-2 web server. Returns
+- ``run_in_background_thread()`` — used by the web server. Returns
   a started thread; .stop() to ask it to wind down.
 
-Per design spec §4.3: this is the ONLY module that wires the three
+Per design web spec §4.3: this is the ONLY module that wires the three
 collaborators. The detector knows nothing about storage; storage knows
 nothing about cameras.
 """
@@ -67,7 +67,7 @@ class PipelineRunner:
             min_track_frames=settings.detector.min_track_frames,
         )
 
-        # -- live preview / stats tap (MVP-2) --
+        # -- live preview / stats tap --
         self._frame_lock = threading.Lock()
         self._latest_annotated_jpeg: bytes | None = None
         self._latest_full_bgr: np.ndarray | None = None
@@ -79,7 +79,7 @@ class PipelineRunner:
         self._last_encode_mono: float | None = None
         self._tracking = False
 
-    # -- live-frame tap API (MVP-2) --
+    # -- live-frame tap API (consumed by Supervisor, then by the web routes) --
     def add_viewer(self) -> None:
         with self._frame_lock:
             self._viewers += 1

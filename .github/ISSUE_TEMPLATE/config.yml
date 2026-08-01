@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/PatientVibes/curbcam/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
+  - name: Setup help — mounting, aiming, calibration
+    url: https://github.com/PatientVibes/curbcam#mounting-for-best-accuracy
+    about: Most accuracy problems come down to camera placement and calibration. Start here.
+  - name: Responsible use and local law
+    url: https://github.com/PatientVibes/curbcam#before-you-install
+    about: What to check before pointing a camera at a public street.

@@ -90,7 +90,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     static_dir = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     # NB: media is NOT a StaticFiles mount — event images are private and are
-    # served by an auth-protected /media route in pages.py (spec §6). We still
+    # served by an auth-protected /media route in pages.py (web spec §6). We still
     # ensure the directory exists so FileResponse has a root to resolve against.
     supervisor.media_root.mkdir(parents=True, exist_ok=True)
     app.include_router(pages.router)

@@ -1,4 +1,10 @@
-"""Event feed (SSE) + history/CSV (history + CSV added in Slice D)."""
+"""Event feed.
+
+Three read paths over the same data:
+  /api/events/stream  server-sent events, powering the live dashboard feed
+  /api/events         paginated history for the Events page
+  /api/events.csv     the same history as a CSV download
+"""
 
 from __future__ import annotations
 
