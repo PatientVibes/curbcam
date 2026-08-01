@@ -1,4 +1,4 @@
-"""First-run gate (spec §6).
+"""First-run gate (web spec §6).
 
 If no admin password OR no active calibration exists, every route except
 the setup/auth/calibration/crop/static surface is 303-redirected to

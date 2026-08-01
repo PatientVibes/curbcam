@@ -1,6 +1,7 @@
 """In-process pub-sub for finalised events and pipeline status.
 
-Used by MVP-2's SSE endpoint and by future v0.2 webhook/MQTT plugins.
+Used by the SSE endpoint that drives the live dashboard, and by the alert
+dispatcher that fans qualifying events out to ntfy / webhook / MQTT.
 A single fanout point (publish) so adding subscribers is additive.
 
 Threading: publish() must be called from inside the asyncio loop;

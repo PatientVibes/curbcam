@@ -2,8 +2,13 @@
 
 ## Supported versions
 
-curbcam is pre-1.0 and ships from `main`. Security fixes land on `main` and the
-latest tag (currently `v0.2.0-mvp-2`). Older tags are not maintained.
+curbcam is pre-1.0 and ships from `main`. Security fixes land on `main` and on
+the most recent tag; older tags are not maintained. See
+[Releases](https://github.com/PatientVibes/curbcam/releases) for the current one
+rather than a version pinned in this file, which goes stale.
+
+If you run the Docker image, `docker compose pull && docker compose up -d` gets
+you the latest build — migrations run automatically on boot.
 
 ## Reporting a vulnerability
 

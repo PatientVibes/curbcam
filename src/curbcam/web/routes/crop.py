@@ -1,4 +1,4 @@
-"""Alignment wizard: save the detection crop rectangle (spec §8.6).
+"""Alignment wizard: save the detection crop rectangle (web spec §8.6).
 
 Rect is in SOURCE-frame coordinates (the JS scales display->source). On
 save: validate against the configured resolution, persist detector.crop,

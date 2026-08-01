@@ -1,7 +1,7 @@
 """Pydantic models for curbcam settings.
 
 Persisted to YAML on disk. Field labels and help text live in
-``defaults.py`` so the settings UI in MVP-2 reads from a single source
+``defaults.py`` so the settings UI reads from a single source
 of truth.
 """
 

@@ -1,15 +1,22 @@
 """Load and save Settings as YAML.
 
 Behaviour:
-- ``load()`` reads the YAML if present (creates with defaults if not),
-  then constructs ``Settings``. Pydantic-settings overlays env vars on
-  top of the YAML at construction time, so the returned instance is
-  YAML ⊕ env.
-- ``save(s)`` writes the in-memory values to YAML as-is. If an env var
-  was overriding a field at save time, that env value is what gets
-  persisted — MVP-1 does not try to be clever about this. MVP-2's
-  settings UI will accept user-typed form values and call save() with
-  those, sidestepping the problem.
+
+- ``load()`` reads the YAML if present (creating it with defaults if not), then
+  constructs ``Settings``. pydantic-settings overlays environment variables on
+  top of the YAML at construction time, so the returned instance is YAML ⊕ env.
+- ``save(s)`` writes the in-memory values to YAML as-is.
+
+**The env-shadowing caveat.** If an environment variable was overriding a field
+at ``save()`` time, that env value is what gets written to disk — ``save()`` has
+no way to tell an env-derived value from a user-chosen one.
+
+The settings UI sidesteps this rather than solving it: env-shadowed fields render
+read-only and are therefore never submitted, and the save path calls
+``save_raw()`` with the posted form values overlaid onto the previously-loaded
+raw YAML. So the UI never bakes an env value into the file. Prefer ``save_raw()``
+over ``save()`` for anything driven by user input; ``save()`` remains correct for
+the CLI, where there is no form and the caller owns the whole Settings object.
 """
 
 import os
@@ -111,7 +118,7 @@ class ConfigStore:
         """Return the YAML dict as-on-disk, WITHOUT env-var overlay.
 
         Used by the settings UI so saving never bakes an env-shadowed
-        value into the file (spec §5). Returns defaults if the file is
+        value into the file (web spec §5). Returns defaults if the file is
         absent.
         """
         if not self._path.exists():

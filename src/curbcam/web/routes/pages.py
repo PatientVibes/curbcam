@@ -35,7 +35,7 @@ def media(
     _: None = Depends(require_session),
     sup: Supervisor = Depends(get_supervisor),
 ) -> FileResponse:
-    """Serve event images behind the admin session (spec §6).
+    """Serve event images behind the admin session (web spec §6).
 
     A bare StaticFiles mount would expose private event JPEGs to anyone on
     the LAN once configured. This route requires a session and confirms the

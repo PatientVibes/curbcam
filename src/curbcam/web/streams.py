@@ -1,4 +1,4 @@
-"""MJPEG + SSE streaming generators (spec §8.4).
+"""MJPEG + SSE streaming generators (web spec §8.4).
 
 MJPEG: one shared annotated-frame slot, read at a fixed fps regardless of
 camera rate. Viewer refcount is incremented on entry and decremented in a

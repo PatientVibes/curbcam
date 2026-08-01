@@ -1,4 +1,4 @@
-"""Liveness endpoint for Docker HEALTHCHECK + CI smoke (spec §4).
+"""Liveness endpoint for Docker HEALTHCHECK + CI smoke (web spec §4).
 
 Unauthenticated and first-run-gate-exempt by design — it must answer before
 any setup is done. Reports process liveness only; it does not probe the

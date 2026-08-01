@@ -89,7 +89,7 @@ def build_context(sup: Supervisor, window: str) -> dict[str, Any]:
     daily = _fill_daily(repo.daily_counts(start, tz), start, to_local(now, tz).date())
 
     # Histogram: bucket in the user's DISPLAY units so mph users get round 5-mph
-    # bins, not 5-kph bins relabeled into uneven mph (spec §5.3).
+    # bins, not 5-kph bins relabeled into uneven mph (web spec §5.3).
     bins: dict[int, int] = {}
     for kph in speeds:
         lo = int(display_speed(kph, units) // _BIN_DISPLAY) * _BIN_DISPLAY
