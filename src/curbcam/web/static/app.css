@@ -131,3 +131,15 @@ section.danger h2{color:var(--danger);margin-top:0}
 }
 @media (max-width:400px){.event-list{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* --- alert test buttons + import/export results (no-code settings uplift) --- */
+.alert-tests{margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--surface-3)}
+.alert-test-row{display:flex;align-items:center;gap:var(--sp-3);margin-block:var(--sp-2);flex-wrap:wrap}
+.alert-test-slot{font-size:var(--fs-1)}
+.alert-test-result.test-ok{color:var(--ok)}
+.alert-test-result.test-fail{color:var(--danger)}
+/* Explains WHY a field is read-only. Muted so it does not compete with the
+   field's own help text, but full-width so a long variable name can wrap. */
+.setting small.env-note{grid-column:2;color:var(--text-muted);font-size:var(--fs-0)}
+.setting small.env-note code{background:var(--surface-3);padding:0 .25em;border-radius:2px}
+@media (max-width:560px){.setting small.env-note{grid-column:1}}

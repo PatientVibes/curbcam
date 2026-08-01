@@ -16,6 +16,7 @@ from typing import Any
 
 from curbcam.alerts.channels import MqttPublisher, send_ntfy, send_webhook
 from curbcam.alerts.message import build_payload, build_text
+from curbcam.alerts.registry import CHANNELS, ChannelSpec
 from curbcam.config.schema import AlertsSettings
 from curbcam.localtime import zone
 
@@ -80,35 +81,34 @@ class AlertDispatcher:
         data = build_payload(s, payload, self._units)
         text = build_text(data, self._tz)
         now = self._clock()
-        # (name, channel-on, required-target, cooldown, coroutine factory). The
-        # factory defers building the coroutine until we actually fire, so no
-        # unawaited coroutine is created for a skipped channel.
-        channels: list[tuple[str, bool, str, int, Callable[[], Any]]] = [
-            (
-                "ntfy",
-                s.ntfy_enabled,
-                s.ntfy_topic,
-                s.ntfy_cooldown_s,
-                lambda: send_ntfy(self._client, s, text, data["url"]),
-            ),
-            (
-                "webhook",
-                s.webhook_enabled,
-                s.webhook_url,
-                s.webhook_cooldown_s,
-                lambda: send_webhook(self._client, s, data),
-            ),
-            (
-                "mqtt",
-                s.mqtt_enabled,
-                s.mqtt_host,
-                s.mqtt_cooldown_s,
-                lambda: self._publish_mqtt(s, data),
-            ),
-        ]
-        for name, enabled, target, cooldown_s, make in channels:
-            if enabled and target and self._due(name, cooldown_s, now):
-                await self._fire(name, make(), now)
+        # Iterating CHANNELS rather than a hard-coded list here is what stops a
+        # newly-added channel from being fully configurable in the UI yet never
+        # firing, which was the previous failure mode.
+        for spec in CHANNELS:
+            if (
+                spec.enabled(s)
+                and spec.is_configured(s)
+                and self._due(spec.name, spec.cooldown_s(s), now)
+            ):
+                await self._fire(spec.name, self.send_to_channel(spec, s, data, text), now)
+
+    async def send_to_channel(
+        self, spec: ChannelSpec, s: AlertsSettings, data: dict[str, Any], text: str
+    ) -> None:
+        """Dispatch one payload to one channel.
+
+        Shared with the test-alert endpoint so a test send goes down exactly the
+        same path as a real one -- a test that used a separate code path could
+        pass while real alerts fail.
+        """
+        if spec.name == "ntfy":
+            await send_ntfy(self._client, s, text, data["url"])
+        elif spec.name == "webhook":
+            await send_webhook(self._client, s, data)
+        elif spec.name == "mqtt":
+            await self._publish_mqtt(s, data)
+        else:  # pragma: no cover - registry and dispatcher out of sync
+            raise ValueError(f"No sender wired for channel {spec.name!r}")
 
     def _due(self, name: str, cooldown_s: int, now: float) -> bool:
         last = self._last_fired.get(name)

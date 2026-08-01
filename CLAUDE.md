@@ -92,6 +92,32 @@ So a green PR **does not** validate anything used solely by the release path —
 and still break the first real tag push. When bumping those, cut a throwaway tag to exercise the
 release path deliberately.
 
+## Adding a setting
+
+Three edits, all enforced by `tests/unit/config/test_settings_ui_coverage.py`:
+
+1. `config/schema.py` — the Pydantic field
+2. `config/defaults.py` — a `(label, help)` row in `FIELD_LABELS`
+3. `web/settings_form.py` — the key + input kind in `PRIMARY`, `ADVANCED` or `ALERTS`
+
+Miss (2) and the settings page shows the raw dotted key as the label; miss (3)
+and the field cannot be changed from the UI at all. Both now fail CI rather than
+shipping silently. `detector.crop` is the one deliberate exemption — it is set by
+the alignment wizard, not typed.
+
+## Adding an alert channel
+
+1. Implement the transport in `alerts/channels.py`
+2. Add its fields per "Adding a setting" above
+3. Add a `ChannelSpec` to `alerts/registry.py`
+4. Wire the send in `AlertDispatcher.send_to_channel`
+
+The dispatcher, the settings form's test buttons and `/api/alerts/test/{channel}`
+all iterate `CHANNELS`, so a registered channel gets its test button and its
+dispatch automatically. Before the registry existed, the hard-coded list inside
+the dispatcher was the easy step to forget — producing a channel that was fully
+configurable in the UI and never fired.
+
 ## Conventions
 
 - Python 3.12+ (CI also gates 3.13). Strict mypy over `src/curbcam`.

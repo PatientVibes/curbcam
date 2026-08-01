@@ -34,10 +34,40 @@
                {% if f.env %}readonly{% endif %}>
       {% endif %}
       <small class="help">{{ f.help }}</small>
-      {% if f.env %}<span class="badge-env">set via environment</span>{% endif %}
+      {% if f.env %}
+      <span class="badge-env">set via environment</span>
+      <small class="help env-note">
+        This field is read-only because the environment variable
+        <code>{{ f.env_var }}</code> is set, and an environment value always wins
+        over the saved config. To edit it here, remove <code>{{ f.env_var }}</code>
+        from your <code>.env</code> or <code>docker-compose.yml</code> and restart
+        the container.
+      </small>
+      {% endif %}
       {% if f.error %}<span class="field-error">{{ f.error }}</span>{% endif %}
     </div>
     {% endfor %}
+    {% if group_name == "alerts" %}
+    <div class="alert-tests">
+      <p class="help"><strong>Send a test</strong> to check a channel works without
+        waiting for a vehicle. Save your settings first — the test uses the saved
+        values, not what is currently typed in the boxes. Tests ignore the enable
+        switches, the alert speed and the cooldown, so you can verify a channel
+        before turning it on.</p>
+      {% for c in alert_channels %}
+      <div class="alert-test-row">
+        {# formaction + form=... would submit the settings form; a plain button
+           with hx-post avoids that and posts only this request. #}
+        <button type="button" class="secondary"
+                hx-post="/api/alerts/test/{{ c.name }}"
+                hx-target="#alert-test-{{ c.name }}"
+                hx-swap="innerHTML"
+                hx-indicator="#alert-test-{{ c.name }}">Send test to {{ c.label }}</button>
+        <span id="alert-test-{{ c.name }}" class="alert-test-slot"></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </fieldset>
   {% endfor %}
   <button type="submit">Save &amp; restart</button>

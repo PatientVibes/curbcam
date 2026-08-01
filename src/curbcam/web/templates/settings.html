@@ -16,6 +16,29 @@
   </ul>
 </section>
 
+<section>
+  <h2>Backup &amp; restore</h2>
+  <p class="help">Download your settings so a working setup survives an SD-card
+    failure or a reinstall. The file does <strong>not</strong> include your
+    calibration — that is specific to where this camera is pointed, and restoring
+    it onto a differently-aimed camera would produce confident but wrong speeds.
+    It also excludes your password and stream tokens. It <em>may</em> contain an
+    MQTT username and password, so treat the download as sensitive.</p>
+
+  <p><a href="/api/settings/export" class="secondary" download>Download settings</a></p>
+
+  <form hx-post="/api/settings/import"
+        hx-encoding="multipart/form-data"
+        hx-target="#import-result"
+        hx-swap="innerHTML"
+        hx-confirm="Replace all current settings with the uploaded file? The detector will restart.">
+    <label for="settings-file">Restore from a downloaded file</label>
+    <input id="settings-file" type="file" name="file" accept=".yaml,.yml,application/x-yaml,text/yaml" required>
+    <button type="submit" class="secondary">Import settings</button>
+    <span id="import-result" class="alert-test-slot"></span>
+  </form>
+</section>
+
 <section class="danger">
   <h2>Delete old events</h2>
   <form hx-post="/api/events/purge" hx-confirm="Delete events older than the given days?">
