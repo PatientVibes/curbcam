@@ -4,7 +4,26 @@ Notable user-facing changes to curbcam. Newest first.
 
 ## Unreleased
 
+_Nothing yet._
+
+## 0.4.0 — 2026-08-01
+
+The first release with the full web UI, alerts and Reports. Everything since
+`v0.3.0-mvp-3` (June 1) lands here.
+
+**Upgrading:** `docker compose pull && docker compose up -d`. Database migrations
+run automatically on boot, so there is no manual step.
+
 ### Added
+
+- **Alerts** — push a notification when a vehicle is detected at or above a speed
+  you choose, via **ntfy** (phone push), a generic **webhook**, or **MQTT** (e.g.
+  Home Assistant). Each channel has its own cooldown. Configure under
+  **Settings → Alerts**. ntfy topics on the public server are readable by anyone
+  who knows the name — pick an unguessable one.
+- **Reports** dashboard — vehicle count, median / 85th-percentile / max speed, and
+  inline-SVG charts (speed distribution, traffic by hour of day, daily volume
+  trend, per-direction breakdown) over a selectable window (Today / 7d / 30d / All).
 - **Send a test alert** — each channel has a *Send test to …* button under
   **Settings → Alerts**. It delivers a `[TEST]` message over the real transport,
   so you can confirm an ntfy topic, webhook URL or MQTT broker works without
@@ -17,34 +36,34 @@ Notable user-facing changes to curbcam. Newest first.
   camera is pointed; restoring it onto a differently-aimed camera would give
   confident but wrong speeds) and excludes your password and stream tokens. It
   may contain an MQTT username/password, so treat the file as sensitive.
-- Contributor docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue templates and
-  a pull-request template.
+- **Timezone** setting (**Settings → Timezone**, an IANA name like
+  `America/New_York`) — Reports hour-of-day, daily totals, the *Today* window, and
+  alert times use it; blank means UTC. The live event feed uses the browser's clock.
+- **Raspberry Pi Camera Module Docker image** (`:picamera`), camera auto-detect in
+  the setup wizard, and an admin login on the setup page.
+- Contributor docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue templates and a
+  pull-request template.
 
 ### Changed
+
 - Settings fields held read-only by a `CURBCAM_*` environment variable now name
   the variable and explain how to unset it, instead of showing an unexplained
   "set via environment" badge.
 
 ### Fixed
-- CI installed dev tools without using `uv.lock`, so it tracked the newest
-  release of ruff/mypy/pytest rather than the reviewed versions. A ruff release
-  that began formatting Markdown turned the build red on an unrelated docs
-  change. CI now installs with `uv sync --frozen`.
+
 - Reports histogram now buckets in your display units (clean 5 mph / 5 kph bins).
 - Daily-volume trend includes zero-event days so the time axis isn't compressed.
 - Camera discovery no longer breaks the web app's import on non-Linux machines.
+- CI installed dev tools without using `uv.lock`, so it tracked the newest release
+  of ruff/mypy/pytest rather than the reviewed versions. A ruff release that began
+  formatting Markdown turned the build red on an unrelated docs change. CI now
+  installs with `uv sync --frozen`.
 
-### Added (earlier in this cycle)
-- **Alerts** — push a notification when a vehicle is detected at or above a speed
-  you choose, via **ntfy** (phone push), a generic **webhook**, or **MQTT** (e.g.
-  Home Assistant). Each channel has its own cooldown. Configure under
-  **Settings → Alerts**. ntfy topics on the public server are readable by anyone
-  who knows the name — pick an unguessable one.
-- **Reports** dashboard — vehicle count, median / 85th-percentile / max speed, and
-  inline-SVG charts (speed distribution, traffic by hour of day, daily volume
-  trend, per-direction breakdown) over a selectable window (Today / 7d / 30d / All).
-- **Timezone** setting (**Settings → Timezone**, an IANA name like
-  `America/New_York`) — Reports hour-of-day, daily totals, the *Today* window, and
-  alert times use it; blank means UTC. The live event feed uses the browser's clock.
-- Raspberry Pi Camera Module Docker image (`:picamera`), camera auto-detect in the
-  setup wizard, and an admin login on the setup page.
+## Earlier
+
+Pre-release milestones, documented in their GitHub releases rather than here:
+
+- **`v0.3.0-mvp-3`** (2026-06-01) — Docker install path, mDNS discovery
+- **`v0.2.0-mvp-2`** (2026-05-29) — web UI, setup wizard, calibration
+- **`v0.1.0-mvp-1`** (2026-05-28) — headless detector and CLI
