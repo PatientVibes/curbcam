@@ -15,7 +15,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from curbcam.web.routes import (
+    alerts,
     auth,
+    backup,
     calibration,
     crop,
     debug,
@@ -45,10 +47,16 @@ def create_app(supervisor: Supervisor) -> FastAPI:
         supervisor.start()
         stats_task = asyncio.create_task(_stats_loop(supervisor))
         dispatcher = AlertDispatcher(supervisor.config_store, supervisor.bus)
+        # Published on app.state so the test-alert route can reuse this exact
+        # dispatcher -- same httpx client, same MQTT connection, same sender code
+        # path. A test send that built its own dispatcher could pass while real
+        # alerts fail, which would make the button actively misleading.
+        app.state.alert_dispatcher = dispatcher
         alerts_task = asyncio.create_task(dispatcher.run())
         try:
             yield
         finally:
+            app.state.alert_dispatcher = None
             stats_task.cancel()
             alerts_task.cancel()
             # Await the cancelled tasks before tearing down resources: aclose()
@@ -73,6 +81,8 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(events.router)
     app.include_router(reports.router)
     app.include_router(settings.router)
+    app.include_router(alerts.router)
+    app.include_router(backup.router)
     app.include_router(calibration.router)
     app.include_router(crop.router)
     app.include_router(setup.router)

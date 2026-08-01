@@ -90,11 +90,17 @@ def _descriptor(
     raw: dict[str, Any], dotted: str, kind: str, errors: dict[str, str]
 ) -> dict[str, Any]:
     label, help_text = FIELD_LABELS.get(dotted, (dotted, ""))
+    env_var = _env_key(dotted)
     base = {
         "key": dotted,
         "label": label,
         "help": help_text,
-        "env": os.environ.get(_env_key(dotted)) is not None,
+        "env": os.environ.get(env_var) is not None,
+        # Surfaced in the template so a read-only field explains *which* variable
+        # is holding it and how to take back control. Without this the field is
+        # simply un-editable with no stated cause -- a dead end for anyone who
+        # set it once in docker-compose and later forgot.
+        "env_var": env_var,
         "error": errors.get(dotted),
     }
     if dotted in BOOLEAN_KEYS:

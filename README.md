@@ -154,8 +154,26 @@ Everything is configured under **Settings → Alerts**:
   notifications. `0` fires on every qualifying event (the right setting for
   MQTT → Home Assistant); the HTTP channels default to `60`.
 
+**Send a test.** Each channel has a **Send test to …** button under
+**Settings → Alerts**. It delivers a `[TEST]` message over the real transport so
+you can confirm your topic, URL or broker works without waiting for a vehicle.
+Tests deliberately ignore the enable switches, the alert speed and the cooldown,
+so you can verify a channel before turning it on — and a failure shows the actual
+error (HTTP status, DNS failure, MQTT return code) rather than just "failed".
+
 No extra install step for alerts — `paho-mqtt` (the MQTT client) ships in the
 Docker image and in the `[dev]` extra.
+
+### Backup & restore
+
+**Settings → Backup & restore** downloads your settings as YAML and restores them
+from a downloaded file. Useful before reflashing an SD card.
+
+The export deliberately **excludes your calibration**, which is specific to where
+this camera is pointed — restoring it onto a differently-aimed camera would
+produce confident but wrong speeds. It also excludes your password and stream
+tokens. It *may* contain an MQTT username and password if you configured one, so
+treat the file as sensitive.
 
 ### Mounting for best accuracy
 
