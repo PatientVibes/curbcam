@@ -157,7 +157,13 @@ def calibrate(
     notes: str | None = typer.Option(None),
     data_dir: Path = typer.Option(Path("./data")),
 ) -> None:
-    """Write a new active calibration directly (CLI bootstrap before MVP-2 UI)."""
+    """Write a new active calibration directly.
+
+    A headless escape hatch for scripted setup and for recovering a device whose
+    web UI is unreachable. The normal path is the browser wizard at
+    /setup/calibrate, which measures mm-per-pixel by having you click two points
+    on a frozen frame -- far easier than deriving the numbers by hand.
+    """
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
     ensure_schema(db)
     repo = CalibrationRepo(db)
@@ -165,7 +171,7 @@ def calibrate(
         mm_per_px_l2r=mm_per_px_l2r,
         mm_per_px_r2l=mm_per_px_r2l,
         reference_distance_mm=reference_distance_mm,
-        # MVP-2 calibration wizard will populate this from the user's
+        # The browser wizard populates this from the user's
         # click coordinates on the live preview frame; CLI bootstrap
         # has no points to record.
         reference_points_json="[]",
@@ -191,7 +197,7 @@ def db_upgrade(data_dir: Path = typer.Option(Path("./data"))) -> None:
     """Run all pending Alembic migrations against the data-dir database.
 
     Used by the container entrypoint on every boot so `docker compose pull`
-    of a newer image migrates an existing install to head (spec §6).
+    of a newer image migrates an existing install to head (web spec §6).
     `alembic.ini`'s relative sqlalchemy.url is overridden so --data-dir is
     the single source of truth for the DB location.
     """

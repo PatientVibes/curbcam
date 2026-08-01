@@ -1,6 +1,6 @@
 """Single retention sweeper.
 
-Two policies enforced (centralised — design spec §7.2):
+Two policies enforced (centralised — design design spec §7.2):
 1. ``max_events_per_day``: per-day count cap.
 2. ``max_total_disk_mb``: total media-folder size cap (oldest events purged first).
 

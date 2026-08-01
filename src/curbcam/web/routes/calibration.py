@@ -1,4 +1,4 @@
-"""Calibration wizard endpoints (spec §8.7).
+"""Calibration wizard endpoints (web spec §8.7).
 
 capture: freeze the current live frame as a JPEG for measurement. The
 frontend reads the source resolution from the returned image's

@@ -1,11 +1,21 @@
 """Owns all long-lived web-process state and the pipeline lifecycle.
 
-A single Supervisor instance is held on app.state. Routes depend only on
-it (never on globals). start/stop/restart are serialized by a lock so two
-near-simultaneous settings saves cannot race to replace the runner thread
-(spec §4 concurrency invariant). The live-frame tap (latest_frame /
-capture_still / viewers / overlay / stats) is wired in Slice C once the
-PipelineRunner exposes it; until then those return safe defaults.
+A single Supervisor instance is held on ``app.state``. Routes depend only on it,
+never on globals, which is what makes the whole web app testable against a
+file-replay camera with no hardware attached.
+
+``start`` / ``stop`` / ``restart`` are serialized by a lock so two
+near-simultaneous settings saves cannot race to replace the runner thread. This
+matters more than it looks: a save arrives on an HTTP worker while the previous
+restart may still be tearing the old capture thread down, and two threads writing
+``self._runner`` would leak a camera handle.
+
+The live-frame tap (``latest_annotated`` / ``capture_still`` / ``add_viewer`` /
+``set_overlay`` / ``stats``) delegates to the current PipelineRunner and returns
+safe defaults when no runner is active -- which is the normal state between
+``stop()`` and the next ``start()``, and during shutdown.
+
+See ``docs/specs/2026-05-28-curbcam-mvp-2-web.md`` §4 for the design rationale.
 """
 
 from __future__ import annotations

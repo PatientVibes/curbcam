@@ -2,7 +2,7 @@
 
 Used by:
 - developers running curbcam on a laptop without a real camera
-- the integration test suite in MVP-2 (Playwright + httpx hit a server
+- the integration test suite (Playwright + httpx hit a server
   whose runner is fed by this source).
 
 Files are read in lexical order. If ``loop=True``, when the last frame

@@ -1,4 +1,4 @@
-"""Single-admin auth state persisted to auth.json (spec §6).
+"""Single-admin auth state persisted to auth.json (web spec §6).
 
 Stores: an Argon2 password hash, a stable random secret_key (used by
 itsdangerous to sign session cookies and stream tokens), and a list of

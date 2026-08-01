@@ -1,9 +1,17 @@
 """Single source of truth for field labels and help text.
 
-Consumed by the MVP-2 settings UI to render labels/tooltips. Keys are the
-dotted path used by ``Settings`` (e.g. ``"camera.source"``). Whenever a
-field is added to ``schema.py``, add a row here too — the test suite in
-MVP-2 will assert every field has a label.
+Consumed by the settings page to render each field's label and help text. Keys
+are the dotted path used by ``Settings`` (e.g. ``"camera.source"``).
+
+**Whenever you add a field to ``schema.py``, add a row here too**, and add it to
+a group in ``curbcam/web/settings_form.py``. Both are enforced by
+``tests/unit/config/test_settings_ui_coverage.py``: without a label the settings
+page shows the raw dotted key, and without a group the field cannot be changed
+from the UI at all.
+
+Help text is written for the person aiming a camera at a road, not for a
+developer. Say what the setting does, what raising or lowering it trades away,
+and give a usable default where there is one.
 """
 
 FIELD_LABELS: dict[str, tuple[str, str]] = {

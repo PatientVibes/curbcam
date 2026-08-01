@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest something curbcam should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: |
+        The situation you're actually in, rather than the solution you have in
+        mind. "I can't tell whether my alerts work without waiting for a car"
+        leads somewhere better than "add a test button".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What did you have in mind?
+      description: Optional — a rough idea is fine, and so is "no idea, but here's the problem".
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of curbcam?
+      options:
+        - Detection / speed accuracy
+        - Web UI (dashboard, events, reports)
+        - Settings and setup wizard
+        - Alerts (ntfy / webhook / MQTT)
+        - Install and deployment (Docker, Pi)
+        - Storage, retention, privacy
+        - Something else
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      description: |
+        curbcam deliberately stays small and self-hosted. These aren't hard
+        rules, but they shape what's likely to land.
+      options:
+        - label: This works on a Raspberry Pi without a GPU
+        - label: This doesn't require uploading footage off the device
+        - label: This doesn't add a frontend build step
