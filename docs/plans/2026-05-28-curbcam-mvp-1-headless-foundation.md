@@ -98,6 +98,7 @@ __version__ = "0.1.0.dev0"
 
 ```python
 """Shared pytest fixtures."""
+
 from __future__ import annotations
 
 import pytest
@@ -179,6 +180,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'curbcam.detector'`.
 
 ```python
 """Public dataclasses for the detector module."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -190,15 +192,15 @@ Direction = Literal["L2R", "R2L"]
 
 @dataclass(frozen=True, slots=True)
 class Detection:
-    bbox: tuple[int, int, int, int]   # x, y, w, h in source-image pixels
+    bbox: tuple[int, int, int, int]  # x, y, w, h in source-image pixels
     centroid: tuple[int, int]
     area_px: int
-    frame_ts: float                    # monotonic seconds
+    frame_ts: float  # monotonic seconds
 
 
 @dataclass(frozen=True, slots=True)
 class TrackedObject:
-    id: str                            # short uuid, stable across frames
+    id: str  # short uuid, stable across frames
     detections: list[Detection] = field(default_factory=list)
     direction: Direction | None = None
     speed_kph: float | None = None
@@ -247,9 +249,7 @@ from curbcam.detector.calibration import Calibration, speed_from_track
 from curbcam.detector.types import Detection, TrackedObject
 
 
-def make_track(
-    pixels_traveled: int, dt_seconds: float, direction: str
-) -> TrackedObject:
+def make_track(pixels_traveled: int, dt_seconds: float, direction: str) -> TrackedObject:
     """Two detections, dt seconds apart, centroid shifted by pixels_traveled."""
     return TrackedObject(
         id="t1",
@@ -320,6 +320,7 @@ Calibration record.
 mm_per_s = pixels * mm_per_px
 kph     = mm_per_s * (3600 / 1_000_000)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -387,6 +388,7 @@ git commit -m "feat(detector): Calibration dataclass and speed_from_track"
 ```python
 # tests/unit/detector/_synthetic.py
 """Synthetic frame generators for detector tests — no camera needed in CI."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -464,7 +466,7 @@ def test_find_motion_respects_crop() -> None:
     prev = _to_gray(frame_with_white_rect(x=100, y=200, w=40, h=40))
     curr = _to_gray(frame_with_white_rect(x=160, y=200, w=40, h=40))
 
-    crop = (300, 0, 640, 480)   # x_left, y_upper, x_right, y_lower
+    crop = (300, 0, 640, 480)  # x_left, y_upper, x_right, y_lower
     detections = find_motion(prev, curr, min_area_px=500, crop=crop, frame_ts=1.5)
     assert detections == []
 
@@ -505,6 +507,7 @@ the monotonic seconds returned by ``camera.read()``). It is propagated
 verbatim into every returned Detection so speed calculations downstream
 use real elapsed wall-clock between captures, not detector compute time.
 """
+
 from __future__ import annotations
 
 import cv2
@@ -593,9 +596,7 @@ from curbcam.detector.types import Detection
 
 def det(cx: int, ts: float, area: int = 1000) -> Detection:
     """A simple Detection at (cx, 100) with a 20x20 bbox."""
-    return Detection(
-        bbox=(cx - 10, 90, 20, 20), centroid=(cx, 100), area_px=area, frame_ts=ts
-    )
+    return Detection(bbox=(cx - 10, 90, 20, 20), centroid=(cx, 100), area_px=area, frame_ts=ts)
 
 
 def test_tracker_returns_no_track_when_only_one_detection_seen() -> None:
@@ -610,7 +611,7 @@ def test_tracker_finalises_track_after_object_disappears() -> None:
     t.update([det(120, 0.1)])
     t.update([det(140, 0.2)])
     t.update([det(160, 0.3)])
-    completed = t.update([])   # object gone → track finalised
+    completed = t.update([])  # object gone → track finalised
 
     assert len(completed) == 1
     track = completed[0]
@@ -640,7 +641,7 @@ def test_tracker_drops_track_below_min_frames() -> None:
 def test_tracker_starts_new_track_when_object_too_far() -> None:
     t = Tracker(max_dist_px=30, min_track_frames=2)
     t.update([det(100, 0.0)])
-    t.update([det(500, 0.1)])     # >30px away → new track started
+    t.update([det(500, 0.1)])  # >30px away → new track started
     completed_after_gap = t.update([])
 
     # First track had 1 detection (dropped); second track had 1 detection (dropped).
@@ -683,6 +684,7 @@ use case where typically 0 or 1 objects are in the frame at once
 (a car going past, not a crowd of pedestrians). For multi-object scenes
 a Kalman/Hungarian-based tracker would be a future upgrade.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -715,7 +717,7 @@ def _finalise(track: _LiveTrack) -> TrackedObject:
         id=track.id,
         detections=list(track.detections),
         direction=direction,
-        speed_kph=None,    # speed is computed downstream by speed_from_track
+        speed_kph=None,  # speed is computed downstream by speed_from_track
     )
 
 
@@ -750,9 +752,7 @@ class Tracker:
 
         # Any detections still unmatched start new tracks.
         for d in unmatched:
-            survivors.append(
-                _LiveTrack(id=uuid.uuid4().hex[:8], detections=[d])
-            )
+            survivors.append(_LiveTrack(id=uuid.uuid4().hex[:8], detections=[d]))
 
         self._live = survivors
         return finalised
@@ -796,6 +796,7 @@ git commit -m "feat(detector): greedy single-object tracker"
 
 ```python
 """Pydantic-typed configuration model + YAML persistence."""
+
 from curbcam.config.schema import (
     CropRect,
     CameraSettings,
@@ -846,7 +847,7 @@ def test_camera_source_defaults_to_picamera2() -> None:
 
 def test_units_must_be_kph_or_mph() -> None:
     with pytest.raises(ValueError):
-        ServerSettings(units="mps")   # type: ignore[arg-type]
+        ServerSettings(units="mps")  # type: ignore[arg-type]
 
 
 def test_detector_crop_is_optional() -> None:
@@ -883,6 +884,7 @@ Persisted to YAML on disk. Field labels and help text live in
 ``defaults.py`` so the settings UI in MVP-2 reads from a single source
 of truth.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -967,9 +969,11 @@ def test_save_then_load_round_trips_values(tmp_path: Path) -> None:
     path = tmp_path / "curbcam.yaml"
     store = ConfigStore(path)
     s = store.load()
-    s = s.model_copy(update={
-        "server": s.server.model_copy(update={"units": "mph", "min_event_speed_kph": 10.0}),
-    })
+    s = s.model_copy(
+        update={
+            "server": s.server.model_copy(update={"units": "mph", "min_event_speed_kph": 10.0}),
+        }
+    )
     store.save(s)
 
     reloaded = ConfigStore(path).load()
@@ -1010,22 +1014,44 @@ dotted path used by ``Settings`` (e.g. ``"camera.source"``). Whenever a
 field is added to ``schema.py``, add a row here too — the test suite in
 MVP-2 will assert every field has a label.
 """
+
 from __future__ import annotations
 
 FIELD_LABELS: dict[str, tuple[str, str]] = {
     # key: (label, help)
-    "camera.source":               ("Camera source",       "picamera2:0 | usb:/dev/video0 | rtsp://... | file:./path"),
-    "camera.resolution":           ("Resolution",          "Width x height in pixels"),
-    "camera.fps_target":           ("Target frame rate",   "Frames per second the camera should try to deliver"),
-    "detector.min_area_px":        ("Min motion area",     "Ignore moving objects smaller than this (pixels)"),
-    "detector.min_track_frames":   ("Min track frames",    "An object must be seen this many frames to count as an event"),
-    "detector.max_dist_px":        ("Tracker step",        "Maximum per-frame centroid movement that still counts as the same object"),
-    "detector.crop":               ("Detection region",    "Rectangle within the frame where motion is checked (set by alignment wizard)"),
-    "retention.max_events_per_day":("Max events / day",    "Cap on how many events to keep per day before pruning"),
-    "retention.max_total_disk_mb": ("Max total disk (MB)", "Total size of media/ before old events are pruned"),
-    "server.units":                ("Display units",       "kph or mph for everything user-facing"),
-    "server.min_event_speed_kph":  ("Min event speed",     "Events slower than this are dropped before storage"),
-    "server.log_level":            ("Log level",           "DEBUG / INFO / WARNING"),
+    "camera.source": ("Camera source", "picamera2:0 | usb:/dev/video0 | rtsp://... | file:./path"),
+    "camera.resolution": ("Resolution", "Width x height in pixels"),
+    "camera.fps_target": (
+        "Target frame rate",
+        "Frames per second the camera should try to deliver",
+    ),
+    "detector.min_area_px": ("Min motion area", "Ignore moving objects smaller than this (pixels)"),
+    "detector.min_track_frames": (
+        "Min track frames",
+        "An object must be seen this many frames to count as an event",
+    ),
+    "detector.max_dist_px": (
+        "Tracker step",
+        "Maximum per-frame centroid movement that still counts as the same object",
+    ),
+    "detector.crop": (
+        "Detection region",
+        "Rectangle within the frame where motion is checked (set by alignment wizard)",
+    ),
+    "retention.max_events_per_day": (
+        "Max events / day",
+        "Cap on how many events to keep per day before pruning",
+    ),
+    "retention.max_total_disk_mb": (
+        "Max total disk (MB)",
+        "Total size of media/ before old events are pruned",
+    ),
+    "server.units": ("Display units", "kph or mph for everything user-facing"),
+    "server.min_event_speed_kph": (
+        "Min event speed",
+        "Events slower than this are dropped before storage",
+    ),
+    "server.log_level": ("Log level", "DEBUG / INFO / WARNING"),
 }
 ```
 
@@ -1045,6 +1071,7 @@ Behaviour:
   settings UI will accept user-typed form values and call save() with
   those, sidestepping the problem.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -1118,6 +1145,7 @@ git commit -m "feat(config): Pydantic schema, defaults catalog, YAML store with 
 
 ```python
 """SQLite + SQLAlchemy + Alembic-managed schema and media-file management."""
+
 from curbcam.storage.db import Database
 from curbcam.storage.models import Base, Calibration, Event
 
@@ -1131,6 +1159,7 @@ __all__ = ["Base", "Calibration", "Database", "Event"]
 
 Direct map of the schema in design spec §7.1.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -1187,9 +1216,7 @@ class Event(Base):
     track_len_px: Mapped[int] = mapped_column(Integer, nullable=False)
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
     thumb_path: Mapped[str] = mapped_column(Text, nullable=False)
-    calibration_id: Mapped[int | None] = mapped_column(
-        ForeignKey("calibrations.id"), nullable=True
-    )
+    calibration_id: Mapped[int | None] = mapped_column(ForeignKey("calibrations.id"), nullable=True)
 
     calibration: Mapped[Calibration | None] = relationship(back_populates="events")
 
@@ -1204,6 +1231,7 @@ class Event(Base):
 Enables SQLite WAL journaling at first connection so the writer (detector
 thread) and readers (web server, in MVP-2) never block each other.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -1288,6 +1316,7 @@ datefmt = %H:%M:%S
 
 ```python
 """Alembic env script — uses curbcam's Base for autogeneration."""
+
 from __future__ import annotations
 
 from logging.config import fileConfig
@@ -1327,7 +1356,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,   # SQLite needs batch for ALTER
+            render_as_batch=True,  # SQLite needs batch for ALTER
         )
         with context.begin_transaction():
             context.run_migrations()
@@ -1449,7 +1478,7 @@ def test_wal_journaling_is_enabled(tmp_path: Path) -> None:
 def test_wal_journaling_persists_across_connections(tmp_path: Path) -> None:
     """A fresh Database wrapper on the same file must still see WAL active."""
     path = tmp_path / "wal-persist.sqlite"
-    Database.for_sqlite_path(path)   # first connect sets PRAGMA
+    Database.for_sqlite_path(path)  # first connect sets PRAGMA
     db = Database.for_sqlite_path(path)
     with db.engine.connect() as conn:
         mode = conn.exec_driver_sql("PRAGMA journal_mode").scalar()
@@ -1466,20 +1495,30 @@ def test_unique_active_calibration_constraint_enforced_at_db_layer(
     db = Database.for_sqlite_path(tmp_path / "constraint.sqlite")
     Base.metadata.create_all(db.engine)
     with db.session() as s:
-        s.add(Calibration(
-            created_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
-            mm_per_px_l2r=40.0, mm_per_px_r2l=40.0,
-            reference_distance_mm=4000.0, reference_points_json="[]",
-            active=True, notes=None,
-        ))
+        s.add(
+            Calibration(
+                created_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
+                mm_per_px_l2r=40.0,
+                mm_per_px_r2l=40.0,
+                reference_distance_mm=4000.0,
+                reference_points_json="[]",
+                active=True,
+                notes=None,
+            )
+        )
         s.commit()
     with db.session() as s:
-        s.add(Calibration(
-            created_utc=dt.datetime(2026, 5, 28, 12, 1, 0),
-            mm_per_px_l2r=41.0, mm_per_px_r2l=41.0,
-            reference_distance_mm=4100.0, reference_points_json="[]",
-            active=True, notes=None,
-        ))
+        s.add(
+            Calibration(
+                created_utc=dt.datetime(2026, 5, 28, 12, 1, 0),
+                mm_per_px_l2r=41.0,
+                mm_per_px_r2l=41.0,
+                reference_distance_mm=4100.0,
+                reference_points_json="[]",
+                active=True,
+                notes=None,
+            )
+        )
         with pytest.raises(sa_exc.IntegrityError):
             s.commit()
 
@@ -1607,6 +1646,7 @@ Why: keep callers (the pipeline runner, the API routes) free from
 SQLAlchemy session boilerplate, and make the active-calibration
 invariant a single function call.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -1686,12 +1726,7 @@ class EventRepo:
 
     def list_recent(self, limit: int = 20) -> list[Event]:
         with self._db.session() as s:
-            return (
-                s.query(Event)
-                .order_by(Event.ts_utc.desc())
-                .limit(limit)
-                .all()
-            )
+            return s.query(Event).order_by(Event.ts_utc.desc()).limit(limit).all()
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1749,7 +1784,7 @@ def test_save_event_image_writes_full_and_thumb(tmp_path: Path) -> None:
     full = cv2.imread(str(full_abs))
     thumb = cv2.imread(str(thumb_abs))
     assert full.shape == (480, 640, 3)
-    assert thumb.shape[1] == 320   # default thumb width
+    assert thumb.shape[1] == 320  # default thumb width
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1773,6 +1808,7 @@ Annotation: the full image and thumbnail both get a small bottom-strip
 overlay with timestamp + speed + direction arrow. Bounding boxes etc.
 are NOT persisted (see design spec §7.2).
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -1880,6 +1916,7 @@ git commit -m "feat(storage): MediaWriter with bottom-strip annotation + thumbna
 
 ```python
 """Frame-source abstraction. Detector never depends on this directly."""
+
 from curbcam.camera.base import Camera
 from curbcam.camera.file_replay import FileReplaySource
 
@@ -1890,6 +1927,7 @@ __all__ = ["Camera", "FileReplaySource"]
 
 ```python
 """The Camera Protocol that every frame source implements."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -1999,6 +2037,7 @@ Used by:
 Files are read in lexical order. If ``loop=True``, when the last frame
 is reached the source rewinds to the first.
 """
+
 from __future__ import annotations
 
 import time
@@ -2117,6 +2156,7 @@ The device path is opened lazily on .open() and closed on .close().
 read() returns None on transient failure (caller retries with backoff
 in pipeline/runner.py).
 """
+
 from __future__ import annotations
 
 import time
@@ -2186,6 +2226,7 @@ camera reboots, DHCP changes). This source retries open() up to
 ``max_open_attempts`` with exponential backoff, and a read() that returns
 None signals the pipeline to wait briefly and retry.
 """
+
 from __future__ import annotations
 
 import time
@@ -2261,6 +2302,7 @@ class RtspSource:
 
 Set CURBCAM_TEST_USB_DEVICE=/dev/video0 (or an integer) to enable.
 """
+
 import os
 
 import pytest
@@ -2273,7 +2315,7 @@ _DEVICE = os.environ.get("CURBCAM_TEST_USB_DEVICE")
 
 @pytest.mark.skipif(_DEVICE is None, reason="set CURBCAM_TEST_USB_DEVICE to run")
 def test_usb_source_reads_a_frame() -> None:
-    device: str | int = int(_DEVICE) if _DEVICE.isdigit() else _DEVICE   # type: ignore[arg-type, union-attr]
+    device: str | int = int(_DEVICE) if _DEVICE.isdigit() else _DEVICE  # type: ignore[arg-type, union-attr]
     cam = UsbSource(device, resolution=(640, 480), fps_target=15.0)
     cam.open()
     try:
@@ -2299,6 +2341,7 @@ def test_usb_source_read_before_open_raises() -> None:
 
 Set CURBCAM_TEST_RTSP_URL=rtsp://... to enable.
 """
+
 import os
 
 import pytest
@@ -2360,6 +2403,7 @@ tests on dev laptops don't need the dependency installed. The CLI's
 camera factory raises a clear error if the user picks ``picamera2:N``
 on a system without the library.
 """
+
 from __future__ import annotations
 
 import time
@@ -2378,13 +2422,13 @@ class Picamera2Source:
         self._index = device_index
         self._resolution = resolution
         self._fps_target = fps_target
-        self._cam = None   # type: ignore[var-annotated]
+        self._cam = None  # type: ignore[var-annotated]
 
     def open(self) -> None:
         if self._cam is not None:
             return
         try:
-            from picamera2 import Picamera2   # type: ignore[import-not-found]
+            from picamera2 import Picamera2  # type: ignore[import-not-found]
         except ImportError as e:
             raise RuntimeError(
                 "picamera2 is not installed. On a Raspberry Pi, install with "
@@ -2443,22 +2487,23 @@ def test_factory_returns_file_replay_for_file_source(tmp_path: Path) -> None:
     # Create a single dummy frame so FileReplaySource.open() can probe shape.
     import cv2
     import numpy as np
+
     cv2.imwrite(str(tmp_path / "0001.jpg"), np.zeros((10, 10, 3), dtype=np.uint8))
 
-    cam = camera_from_source(
-        f"file:{tmp_path}", resolution=(640, 480), fps_target=10.0
-    )
+    cam = camera_from_source(f"file:{tmp_path}", resolution=(640, 480), fps_target=10.0)
     assert isinstance(cam, FileReplaySource)
 
 
 def test_factory_routes_usb_prefix() -> None:
     from curbcam.camera.usb_source import UsbSource
+
     cam = camera_from_source("usb:0", resolution=(640, 480), fps_target=15.0)
     assert isinstance(cam, UsbSource)
 
 
 def test_factory_routes_rtsp_prefix() -> None:
     from curbcam.camera.rtsp_source import RtspSource
+
     cam = camera_from_source(
         "rtsp://example.invalid/stream", resolution=(640, 480), fps_target=15.0
     )
@@ -2467,6 +2512,7 @@ def test_factory_routes_rtsp_prefix() -> None:
 
 def test_factory_routes_picamera2_prefix() -> None:
     from curbcam.camera.picamera2_source import Picamera2Source
+
     cam = camera_from_source("picamera2:0", resolution=(640, 480), fps_target=15.0)
     assert isinstance(cam, Picamera2Source)
 
@@ -2497,6 +2543,7 @@ Format examples:
     rtsp://user:pw@host:554/s
     file:./fixtures/sample
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -2558,6 +2605,7 @@ git commit -m "feat(camera): Picamera2Source (lazy import) + camera_from_source 
 
 ```python
 """Runner + event-bus that wires camera → detector → storage."""
+
 from curbcam.pipeline.events import EventBus, EventEnvelope
 
 __all__ = ["EventBus", "EventEnvelope"]
@@ -2620,6 +2668,7 @@ async def test_publish_is_thread_safe_via_loop_call_soon_threadsafe() -> None:
     sub = bus.subscribe()
 
     import threading
+
     threading.Thread(
         target=lambda: bus.publish_threadsafe(EventEnvelope(kind="event", payload={}))
     ).start()
@@ -2648,6 +2697,7 @@ Threading: publish() must be called from inside the asyncio loop;
 publish_threadsafe() may be called from any thread (the detector thread
 typically) and bridges into the loop via call_soon_threadsafe.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -2735,6 +2785,7 @@ git commit -m "feat(pipeline): EventBus with thread-safe publish"
 10 frames, black background, white 40x40 rectangle moving from x=100 to
 x=460 (40 px per frame). Suitable for FileReplaySource consumption.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -2800,8 +2851,10 @@ def test_runner_processes_synthetic_run_and_writes_an_event(tmp_path: Path) -> N
 
     cal_repo = CalibrationRepo(db)
     cal_repo.save_new_active(
-        mm_per_px_l2r=10.0, mm_per_px_r2l=10.0,
-        reference_distance_mm=400.0, reference_points_json="[]",
+        mm_per_px_l2r=10.0,
+        mm_per_px_r2l=10.0,
+        reference_distance_mm=400.0,
+        reference_points_json="[]",
     )
 
     settings = Settings(
@@ -2828,6 +2881,7 @@ def test_runner_processes_synthetic_run_and_writes_an_event(tmp_path: Path) -> N
     # Assert: exactly one event was persisted with L2R direction.
     with db.session() as s:
         from curbcam.storage.models import Event
+
         events = s.query(Event).all()
         assert len(events) == 1, f"expected 1 event, got {len(events)}"
         e = events[0]
@@ -2854,8 +2908,10 @@ def test_runner_processes_r2l_run_with_r2l_calibration(tmp_path: Path) -> None:
     # L2R cal is intentionally junk; if pipeline confuses directions the
     # produced speed will be wildly wrong.
     cal_repo.save_new_active(
-        mm_per_px_l2r=999.0, mm_per_px_r2l=10.0,
-        reference_distance_mm=400.0, reference_points_json="[]",
+        mm_per_px_l2r=999.0,
+        mm_per_px_r2l=10.0,
+        reference_distance_mm=400.0,
+        reference_points_json="[]",
     )
 
     settings = Settings(
@@ -2867,15 +2923,19 @@ def test_runner_processes_r2l_run_with_r2l_calibration(tmp_path: Path) -> None:
 
     camera = FileReplaySource(run_dir, fps_target=60.0, loop=False)
     runner = PipelineRunner(
-        camera=camera, db=db,
-        event_repo=EventRepo(db), calibration_repo=cal_repo,
-        media=MediaWriter(media_root), bus=EventBus(),
+        camera=camera,
+        db=db,
+        event_repo=EventRepo(db),
+        calibration_repo=cal_repo,
+        media=MediaWriter(media_root),
+        bus=EventBus(),
         settings=settings,
     )
     runner.run_until_camera_exhausted()
 
     with db.session() as s:
         from curbcam.storage.models import Event
+
         events = s.query(Event).all()
         assert len(events) == 1
         e = events[0]
@@ -2905,15 +2965,19 @@ def test_runner_skips_persistence_when_no_active_calibration(tmp_path: Path) -> 
 
     camera = FileReplaySource(run_dir, fps_target=60.0, loop=False)
     runner = PipelineRunner(
-        camera=camera, db=db,
-        event_repo=EventRepo(db), calibration_repo=CalibrationRepo(db),
-        media=MediaWriter(media_root), bus=EventBus(),
+        camera=camera,
+        db=db,
+        event_repo=EventRepo(db),
+        calibration_repo=CalibrationRepo(db),
+        media=MediaWriter(media_root),
+        bus=EventBus(),
         settings=settings,
     )
-    runner.run_until_camera_exhausted()   # must not raise
+    runner.run_until_camera_exhausted()  # must not raise
 
     with db.session() as s:
         from curbcam.storage.models import Event
+
         assert s.query(Event).count() == 0
 ```
 
@@ -2940,6 +3004,7 @@ Per design spec §4.3: this is the ONLY module that wires the three
 collaborators. The detector knows nothing about storage; storage knows
 nothing about cameras.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -3072,8 +3137,10 @@ class PipelineRunner:
             log.info("Track finalised but no active calibration; skipping")
             return
         from curbcam.detector.calibration import Calibration as CalDC
-        cal_dc = CalDC(mm_per_px_l2r=float(cal.mm_per_px_l2r),
-                       mm_per_px_r2l=float(cal.mm_per_px_r2l))
+
+        cal_dc = CalDC(
+            mm_per_px_l2r=float(cal.mm_per_px_l2r), mm_per_px_r2l=float(cal.mm_per_px_r2l)
+        )
         speed = speed_from_track(track, cal_dc)
         if speed is None:
             return
@@ -3084,6 +3151,7 @@ class PipelineRunner:
         ts_utc = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
         with self._db.session() as s:
             from curbcam.storage.models import Event
+
             ev = Event(
                 ts_utc=ts_utc,
                 speed_kph=float(speed),
@@ -3212,33 +3280,51 @@ def test_cli_detect_writes_events_to_sqlite(tmp_path: Path) -> None:
     # Seed a calibration via the CLI itself (single-command setup).
     result = subprocess.run(
         [
-            sys.executable, "-m", "curbcam.cli", "calibrate",
-            "--mm-per-px-l2r", "10.0",
-            "--mm-per-px-r2l", "10.0",
-            "--reference-distance-mm", "400",
-            "--data-dir", str(data_dir),
+            sys.executable,
+            "-m",
+            "curbcam.cli",
+            "calibrate",
+            "--mm-per-px-l2r",
+            "10.0",
+            "--mm-per-px-r2l",
+            "10.0",
+            "--reference-distance-mm",
+            "400",
+            "--data-dir",
+            str(data_dir),
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr
 
     # Run the detect command against the file source.
     result = subprocess.run(
         [
-            sys.executable, "-m", "curbcam.cli", "detect",
-            "--config", str(config_path),
-            "--data-dir", str(data_dir),
-            "--media-dir", str(media_dir),
-            "--camera", f"file:{run_dir}",
-            "--min-event-speed-kph", "0",
+            sys.executable,
+            "-m",
+            "curbcam.cli",
+            "detect",
+            "--config",
+            str(config_path),
+            "--data-dir",
+            str(data_dir),
+            "--media-dir",
+            str(media_dir),
+            "--camera",
+            f"file:{run_dir}",
+            "--min-event-speed-kph",
+            "0",
             "--once",
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr
 
     # Assert at least one event was written to the DB.
     import sqlite3
+
     db_path = data_dir / "curbcam.sqlite"
     assert db_path.exists()
     conn = sqlite3.connect(db_path)
@@ -3267,6 +3353,7 @@ Subcommands:
     curbcam calibrate   Insert a new active calibration row directly.
     curbcam db init     Create/upgrade the SQLite schema.
 """
+
 from __future__ import annotations
 
 import logging
@@ -3309,20 +3396,24 @@ def detect(
     store = ConfigStore(config)
     settings = store.load()
     if camera is not None:
-        settings = settings.model_copy(update={
-            "camera": settings.camera.model_copy(update={"source": camera}),
-        })
+        settings = settings.model_copy(
+            update={
+                "camera": settings.camera.model_copy(update={"source": camera}),
+            }
+        )
     if min_event_speed_kph is not None:
-        settings = settings.model_copy(update={
-            "server": settings.server.model_copy(
-                update={"min_event_speed_kph": min_event_speed_kph}
-            ),
-        })
+        settings = settings.model_copy(
+            update={
+                "server": settings.server.model_copy(
+                    update={"min_event_speed_kph": min_event_speed_kph}
+                ),
+            }
+        )
 
     _setup_logging(settings.server.log_level)
 
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
-    Base.metadata.create_all(db.engine)   # idempotent; alembic-managed in prod
+    Base.metadata.create_all(db.engine)  # idempotent; alembic-managed in prod
 
     cam = camera_from_source(
         settings.camera.source,
@@ -3385,11 +3476,11 @@ def db_init(data_dir: Path = typer.Option(Path("./data"))) -> None:
     typer.echo(f"Schema initialised at {data_dir / 'curbcam.sqlite'}")
 
 
-def main() -> None:   # pragma: no cover
+def main() -> None:  # pragma: no cover
     app()
 
 
-if __name__ == "__main__":   # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()
 ```
 
@@ -3469,7 +3560,7 @@ def populated(tmp_path: Path) -> tuple[Database, Path]:
         for i in range(5):
             rel = f"events/2026/05/28/event_{i}.jpg"
             (media / rel).parent.mkdir(parents=True, exist_ok=True)
-            (media / rel).write_bytes(b"x" * 100_000)   # 100 KB
+            (media / rel).write_bytes(b"x" * 100_000)  # 100 KB
             s.add(
                 Event(
                     ts_utc=dt.datetime(2026, 5, 28, 12, i, 0),
@@ -3488,8 +3579,9 @@ def populated(tmp_path: Path) -> tuple[Database, Path]:
 
 def test_sweeper_enforces_max_events_per_day(populated: tuple[Database, Path]) -> None:
     db, media = populated
-    sweeper = RetentionSweeper(db=db, media_root=media,
-                               max_events_per_day=2, max_total_disk_mb=10_000)
+    sweeper = RetentionSweeper(
+        db=db, media_root=media, max_events_per_day=2, max_total_disk_mb=10_000
+    )
     deleted = sweeper.sweep()
     assert deleted >= 3
     with db.session() as s:
@@ -3500,8 +3592,9 @@ def test_sweeper_enforces_max_events_per_day(populated: tuple[Database, Path]) -
 def test_sweeper_enforces_max_total_disk(populated: tuple[Database, Path]) -> None:
     db, media = populated
     # 5 files × 100 KB = 500 KB ≈ 0.5 MB; cap at 0 MB to force purge.
-    sweeper = RetentionSweeper(db=db, media_root=media,
-                               max_events_per_day=10_000, max_total_disk_mb=0)
+    sweeper = RetentionSweeper(
+        db=db, media_root=media, max_events_per_day=10_000, max_total_disk_mb=0
+    )
     deleted = sweeper.sweep()
     assert deleted >= 1
 ```
@@ -3527,6 +3620,7 @@ The sweeper deletes the DB row AND the JPEG + thumbnail. It is safe to
 run repeatedly (no-op if everything is under cap). Returns count of
 events deleted.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -3593,9 +3687,7 @@ class RetentionSweeper:
                 total = self._total_media_bytes()
                 if total <= self._max_disk_bytes:
                     break
-                oldest = (
-                    s.query(Event).order_by(Event.ts_utc.asc()).first()
-                )
+                oldest = s.query(Event).order_by(Event.ts_utc.asc()).first()
                 if oldest is None:
                     break
                 self._delete_files(oldest)

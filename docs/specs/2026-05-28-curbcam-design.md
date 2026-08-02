@@ -133,20 +133,23 @@ hobbyist scope. Revisit only if it bites in practice.
 # detector/types.py
 @dataclass(frozen=True)
 class Detection:
-    bbox: tuple[int, int, int, int]    # x, y, w, h in source-image pixels
+    bbox: tuple[int, int, int, int]  # x, y, w, h in source-image pixels
     centroid: tuple[int, int]
     area_px: int
-    frame_ts: float                     # monotonic seconds
+    frame_ts: float  # monotonic seconds
+
 
 @dataclass(frozen=True)
 class TrackedObject:
-    id: str                             # short uuid, stable across frames
+    id: str  # short uuid, stable across frames
     detections: list[Detection]
     direction: Literal["L2R", "R2L"] | None
-    speed_kph: float | None             # None until calibrated + enough frames
+    speed_kph: float | None  # None until calibrated + enough frames
+
 
 # detector/motion.py
 def find_motion(prev_gray, curr_gray, *, min_area_px, crop) -> list[Detection]: ...
+
 
 # detector/tracker.py
 class Tracker:
@@ -154,11 +157,13 @@ class Tracker:
     def update(self, detections) -> list[TrackedObject]:
         """Returns tracks finalized this frame (object left, lost, or completed)."""
 
+
 # detector/calibration.py
 @dataclass(frozen=True)
 class Calibration:
     mm_per_px_l2r: float
     mm_per_px_r2l: float
+
 
 def speed_from_track(track, cal) -> float | None: ...
 ```
@@ -178,6 +183,7 @@ class Camera(Protocol):
     def open(self) -> None: ...
     def read(self) -> tuple[NDArray, float] | None:  # (frame_bgr, monotonic_ts)
         """Returns None on transient failure (caller retries with backoff)."""
+
     def close(self) -> None: ...
     @property
     def resolution(self) -> tuple[int, int]: ...
@@ -386,22 +392,26 @@ class CameraSettings(BaseModel):
     resolution: tuple[int, int] = (1280, 720)
     fps_target: float = 15.0
 
+
 class DetectorSettings(BaseModel):
     min_area_px: int = 800
     min_track_frames: int = 5
     max_dist_px: int = 100
-    crop: BBox | None = None             # set by alignment wizard
+    crop: BBox | None = None  # set by alignment wizard
+
 
 class RetentionSettings(BaseModel):
     max_events_per_day: int = 500
     max_total_disk_mb: int = 5000
 
+
 class ServerSettings(BaseModel):
     units: Literal["kph", "mph"] = "kph"
-    min_event_speed_kph: float = 5.0           # enforced in pipeline/runner.py
-                                               # before storage write; tracks
-                                               # below this are dropped silently
+    # enforced in pipeline/runner.py before storage write;
+    # tracks below this are dropped silently
+    min_event_speed_kph: float = 5.0
     log_level: Literal["DEBUG", "INFO", "WARNING"] = "INFO"
+
 
 class Settings(BaseModel):
     camera: CameraSettings = CameraSettings()
