@@ -46,6 +46,12 @@ or pytest release can turn CI red with no code change. It already happened once:
 formatting Python code blocks inside Markdown, which pulled `docs/plans/*.md` and `docs/specs/*.md`
 into scope and failed 6 files that predate the rule.
 
+Those 6 files are now formatted, so they pass under both the locked ruff and 0.16 — the version pin
+is no longer the only thing holding them up. **When writing a plan or spec, note that ruff formats
+Python code blocks in Markdown.** Snippets whose indentation is load-bearing — "add these methods to
+the class", "add this key inside the dict" — get dedented to column 0, which destroys the point.
+Start such a block with `# fmt: off` to preserve it verbatim; 5 blocks already do.
+
 `uv sync --all-extras` additionally **fails outright on x86_64** — `picamera2` pulls `python-prctl`,
 which needs libcap development headers. There is no reason to install it off-Pi.
 

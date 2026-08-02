@@ -276,11 +276,19 @@ def _descriptor(
         # boolean stuck at its previous value (settings.py overlays submitted
         # keys onto the loaded raw config).
         truthy = str(_get(raw, dotted)).lower() == "true"
-        return {**base, "kind": "select", "options": ["true", "false"],
-                "value": "true" if truthy else "false"}
+        return {
+            **base,
+            "kind": "select",
+            "options": ["true", "false"],
+            "value": "true" if truthy else "false",
+        }
     options = kind.split(":", 1)[1].split(",") if kind.startswith("select:") else []
-    return {**base, "kind": "select" if kind.startswith("select:") else kind,
-            "options": options, "value": _format_value(_get(raw, dotted), kind)}
+    return {
+        **base,
+        "kind": "select" if kind.startswith("select:") else kind,
+        "options": options,
+        "value": _format_value(_get(raw, dotted), kind),
+    }
 ```
 
 Add the group to `build_groups`'s return dict:
@@ -699,7 +707,10 @@ from curbcam.config.schema import AlertsSettings, Settings
 class _FakeStore:
     def __init__(self, alerts: AlertsSettings, units: str = "kph") -> None:
         self._s = Settings().model_copy(
-            update={"alerts": alerts, "server": Settings().server.model_copy(update={"units": units})}
+            update={
+                "alerts": alerts,
+                "server": Settings().server.model_copy(update={"units": units}),
+            }
         )
 
     def set(self, alerts: AlertsSettings) -> None:
@@ -769,18 +780,20 @@ async def test_cooldown_suppresses_then_allows() -> None:
     c = _FakeClient()
     now = {"t": 0.0}
     d = _disp(store, c, lambda: now["t"])
-    await d.handle(EVENT)          # fires
+    await d.handle(EVENT)  # fires
     now["t"] = 30.0
-    await d.handle(EVENT)          # within cooldown -> suppressed
+    await d.handle(EVENT)  # within cooldown -> suppressed
     now["t"] = 61.0
-    await d.handle(EVENT)          # past cooldown -> fires
+    await d.handle(EVENT)  # past cooldown -> fires
     assert len(c.calls) == 2
 
 
 @pytest.mark.asyncio
 async def test_cooldown_zero_fires_every_event() -> None:
     store = _FakeStore(
-        AlertsSettings(enabled=True, webhook_enabled=True, webhook_url="https://h", webhook_cooldown_s=0)
+        AlertsSettings(
+            enabled=True, webhook_enabled=True, webhook_url="https://h", webhook_cooldown_s=0
+        )
     )
     c = _FakeClient()
     d = _disp(store, c, lambda: 0.0)
@@ -800,8 +813,11 @@ async def test_channel_failure_is_isolated() -> None:
     store = _FakeStore(
         AlertsSettings(
             enabled=True,
-            ntfy_enabled=True, ntfy_topic="boom", ntfy_server="https://n",
-            webhook_enabled=True, webhook_url="https://ok",
+            ntfy_enabled=True,
+            ntfy_topic="boom",
+            ntfy_server="https://n",
+            webhook_enabled=True,
+            webhook_url="https://ok",
         )
     )
     c = _BoomClient()
@@ -933,7 +949,9 @@ class AlertDispatcher:
         if self._mqtt is None or self._mqtt_sig != sig:
             if self._mqtt is not None:
                 self._mqtt.close()
-            self._mqtt = self._mqtt_factory(s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password)
+            self._mqtt = self._mqtt_factory(
+                s.mqtt_host, s.mqtt_port, s.mqtt_username, s.mqtt_password
+            )
             self._mqtt_sig = sig
         await self._mqtt.publish(s.mqtt_topic, json.dumps(data))
 
@@ -1004,7 +1022,9 @@ async def test_dispatcher_fires_webhook_on_event_envelope(supervisor) -> None:  
             pass
 
     client = _Client()
-    d = AlertDispatcher(supervisor.config_store, supervisor.bus, http_client=client, clock=lambda: 0.0)
+    d = AlertDispatcher(
+        supervisor.config_store, supervisor.bus, http_client=client, clock=lambda: 0.0
+    )
     d.refresh()
     await d.handle(
         {"id": 1, "speed_kph": 80.0, "direction": "L2R", "ts_utc": dt.datetime.now().isoformat()}
@@ -1086,13 +1106,24 @@ def repo(tmp_path: Path) -> EventRepo:
     r = EventRepo(db)
     # Six events on 2026-05-28, speeds 20..45, hours 8,8,9,9,10,10.
     for i, (hour, speed, direction) in enumerate(
-        [(8, 20.0, "L2R"), (8, 25.0, "R2L"), (9, 30.0, "L2R"),
-         (9, 35.0, "R2L"), (10, 40.0, "L2R"), (10, 45.0, "R2L")]
+        [
+            (8, 20.0, "L2R"),
+            (8, 25.0, "R2L"),
+            (9, 30.0, "L2R"),
+            (9, 35.0, "R2L"),
+            (10, 40.0, "L2R"),
+            (10, 45.0, "R2L"),
+        ]
     ):
         r.save(
             ts_utc=dt.datetime(2026, 5, 28, hour, i, 0),
-            speed_kph=speed, direction=direction, frame_count=10, track_len_px=200,
-            image_path=f"e_{i}.jpg", thumb_path=f"t_{i}.jpg", calibration_id=None,
+            speed_kph=speed,
+            direction=direction,
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"e_{i}.jpg",
+            thumb_path=f"t_{i}.jpg",
+            calibration_id=None,
         )
     return r
 
@@ -1100,8 +1131,8 @@ def repo(tmp_path: Path) -> EventRepo:
 def test_summary_percentiles(repo: EventRepo) -> None:
     s = repo.summary(None)
     assert s.count == 6
-    assert s.median_kph == pytest.approx(32.5)   # interp between 30 and 35
-    assert s.p85_kph == pytest.approx(41.25)      # interp 40..45 at 0.85
+    assert s.median_kph == pytest.approx(32.5)  # interp between 30 and 35
+    assert s.p85_kph == pytest.approx(41.25)  # interp 40..45 at 0.85
     assert s.max_kph == pytest.approx(45.0)
 
 
@@ -1128,9 +1159,9 @@ def test_daily_counts(repo: EventRepo) -> None:
 
 def test_by_direction(repo: EventRepo) -> None:
     bd = repo.by_direction(None)
-    assert bd["L2R"][0] == 3 and bd["R2L"][0] == 3      # counts
-    assert bd["L2R"][1] == pytest.approx(30.0)           # median of 20,30,40
-    assert bd["R2L"][1] == pytest.approx(35.0)           # median of 25,35,45
+    assert bd["L2R"][0] == 3 and bd["R2L"][0] == 3  # counts
+    assert bd["L2R"][1] == pytest.approx(30.0)  # median of 20,30,40
+    assert bd["R2L"][1] == pytest.approx(35.0)  # median of 25,35,45
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -1174,6 +1205,7 @@ def _percentile(sorted_vals: list[float], pct: float) -> float:
 Add these methods to `EventRepo`:
 
 ```python
+# fmt: off
     def _speeds_since(self, start: dt.datetime | None, direction: str | None = None) -> list[float]:
         with self._db.session() as s:
             q = s.query(Event.speed_kph)
@@ -1409,9 +1441,13 @@ def _seed(supervisor, n: int = 5) -> None:  # type: ignore[no-untyped-def]
     for i in range(n):
         supervisor.events.save(
             ts_utc=dt.datetime.now() - dt.timedelta(hours=i),
-            speed_kph=30.0 + i, direction="L2R" if i % 2 else "R2L",
-            frame_count=10, track_len_px=200,
-            image_path=f"e_{i}.jpg", thumb_path=f"t_{i}.jpg", calibration_id=None,
+            speed_kph=30.0 + i,
+            direction="L2R" if i % 2 else "R2L",
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"e_{i}.jpg",
+            thumb_path=f"t_{i}.jpg",
+            calibration_id=None,
         )
 
 

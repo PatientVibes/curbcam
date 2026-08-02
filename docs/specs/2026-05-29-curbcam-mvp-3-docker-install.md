@@ -88,8 +88,8 @@ Unit-tested by monkeypatching the socket so no real network is touched.
 ```python
 class MDNSPublisher:
     def __init__(self, ip: str, port: int, *, zeroconf: Zeroconf | None = None): ...
-    def start(self) -> None: ...   # register the service
-    def stop(self) -> None: ...    # unregister + close
+    def start(self) -> None: ...  # register the service
+    def stop(self) -> None: ...  # unregister + close
 ```
 
 `start()` registers an `_http._tcp.local.` service named `curbcam`, with

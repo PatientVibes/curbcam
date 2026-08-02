@@ -114,6 +114,7 @@ Expected: resolves and installs without error.
 These avoid real cameras by patching the runner factory with a fake that
 records start/stop calls and simulates a slow rebuild.
 """
+
 from __future__ import annotations
 
 import threading
@@ -146,9 +147,7 @@ def _make_supervisor(tmp_path: Path) -> Supervisor:
     ensure_schema(db)
     store = ConfigStore(tmp_path / "curbcam.yaml")
     store.load()  # create defaults file
-    return Supervisor(
-        config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media"
-    )
+    return Supervisor(config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media")
 
 
 def test_start_then_stop_builds_and_tears_down_one_runner(tmp_path: Path) -> None:
@@ -177,7 +176,10 @@ def test_concurrent_restarts_are_serialized(tmp_path: Path) -> None:
 
     t1 = threading.Thread(target=fire)
     t2 = threading.Thread(target=fire)
-    t1.start(); t2.start(); t1.join(); t2.join()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 
     # 1 start + 2 restarts = 3 runners built; each prior runner stopped exactly once.
     assert len(fakes) == 3
@@ -207,6 +209,7 @@ near-simultaneous settings saves cannot race to replace the runner thread
 capture_still / viewers / overlay / stats) is wired in Slice C once the
 PipelineRunner exposes it; until then those return safe defaults.
 """
+
 from __future__ import annotations
 
 import threading
@@ -341,6 +344,7 @@ git commit -m "feat(web): web deps + Supervisor lifecycle with restart lock"
 ```python
 # tests/integration/web/conftest.py
 """A FileReplaySource-backed app + TestClient, no hardware needed."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -384,9 +388,7 @@ def supervisor(tmp_path: Path) -> Supervisor:
         update={"camera": settings.camera.model_copy(update={"source": f"file:{frames}"})}
     )
     store.save(settings)
-    return Supervisor(
-        config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media"
-    )
+    return Supervisor(config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media")
 
 
 @pytest.fixture
@@ -424,6 +426,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'curbcam.web.app'`.
 
 ```python
 """FastAPI dependencies. Auth deps are filled in Slice B."""
+
 from __future__ import annotations
 
 from fastapi import Request
@@ -439,6 +442,7 @@ def get_supervisor(request: Request) -> Supervisor:
 
 ```python
 """Detector stats for the dashboard pill + diagnostics."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -463,6 +467,7 @@ Pure function of the Supervisor so the whole app is testable with a
 FileReplaySource-backed supervisor (no hardware). Startup binds the event
 loop to the bus and starts the pipeline; shutdown stops it.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -494,6 +499,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
 
 ```python
 """curbcam web layer: FastAPI app + Supervisor."""
+
 from curbcam.web.app import create_app
 from curbcam.web.supervisor import Supervisor
 
@@ -531,6 +537,7 @@ git commit -m "feat(web): create_app composition root + /api/debug/stats"
 
 We patch uvicorn.run so the test doesn't actually bind a socket.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -557,11 +564,16 @@ def test_serve_builds_app_and_calls_uvicorn(tmp_path: Path, monkeypatch) -> None
         app,
         [
             "serve",
-            "--host", "127.0.0.1",
-            "--port", "9111",
-            "--config", str(tmp_path / "curbcam.yaml"),
-            "--data-dir", str(tmp_path / "data"),
-            "--media-dir", str(tmp_path / "media"),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "9111",
+            "--config",
+            str(tmp_path / "curbcam.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -607,9 +619,7 @@ def serve(
     db = Database.for_sqlite_path(data_dir / "curbcam.sqlite")
     ensure_schema(db)
 
-    supervisor = Supervisor(
-        config_store=store, db=db, bus=EventBus(), media_root=media_dir
-    )
+    supervisor = Supervisor(config_store=store, db=db, bus=EventBus(), media_root=media_dir)
     app_obj = create_app(supervisor)
     uvicorn.run(app_obj, host=host, port=port)
 ```
@@ -704,6 +714,7 @@ itsdangerous to sign session cookies and stream tokens), and a list of
 revocable stream tokens stored only as Argon2 hashes. Raw tokens are
 shown to the user once at mint time.
 """
+
 from __future__ import annotations
 
 import json
@@ -781,16 +792,11 @@ class AuthStore:
         return False
 
     def list_stream_tokens(self) -> list[dict[str, Any]]:
-        return [
-            {"id": t["id"], "label": t["label"]}
-            for t in self._read().get("stream_tokens", [])
-        ]
+        return [{"id": t["id"], "label": t["label"]} for t in self._read().get("stream_tokens", [])]
 
     def revoke_stream_token(self, token_id: str) -> None:
         data = self._read()
-        data["stream_tokens"] = [
-            t for t in data.get("stream_tokens", []) if t["id"] != token_id
-        ]
+        data["stream_tokens"] = [t for t in data.get("stream_tokens", []) if t["id"] != token_id]
         self._write(data)
 ```
 
@@ -856,7 +862,9 @@ def test_login_rejects_bad_password(client: TestClient, supervisor) -> None:  # 
 
 def test_login_sets_session_cookie(client: TestClient, supervisor) -> None:  # type: ignore[no-untyped-def]
     supervisor.auth.set_password("correct-horse")
-    resp = client.post("/api/auth/login", data={"password": "correct-horse"}, follow_redirects=False)
+    resp = client.post(
+        "/api/auth/login", data={"password": "correct-horse"}, follow_redirects=False
+    )
     assert resp.status_code in (200, 303)
     assert "curbcam_session" in resp.cookies
 
@@ -880,6 +888,7 @@ Expected: FAIL (no `/api/auth/login` route).
 
 ```python
 """FastAPI dependencies + session cookie helpers."""
+
 from __future__ import annotations
 
 from fastapi import HTTPException, Request, Response
@@ -901,9 +910,7 @@ def _serializer(sup: Supervisor) -> URLSafeTimedSerializer:
 
 def issue_session(sup: Supervisor, response: Response) -> None:
     token = _serializer(sup).dumps({"admin": True})
-    response.set_cookie(
-        SESSION_COOKIE, token, max_age=_MAX_AGE_S, httponly=True, samesite="lax"
-    )
+    response.set_cookie(SESSION_COOKIE, token, max_age=_MAX_AGE_S, httponly=True, samesite="lax")
 
 
 def clear_session(response: Response) -> None:
@@ -931,6 +938,7 @@ def require_session(request: Request) -> None:
 
 ```python
 """Login/logout. /api/auth/login is the only fully public endpoint."""
+
 from __future__ import annotations
 
 import time
@@ -1043,6 +1051,7 @@ the setup/auth/calibration/crop/static surface is 303-redirected to
 /setup. The gate only controls redirection; per-route require_session
 still enforces authentication on protected endpoints.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -1060,7 +1069,9 @@ _EXEMPT_PREFIXES = (
 
 
 def _is_exempt(path: str) -> bool:
-    return any(path == p or path.startswith(p + "/") or path.startswith(p) for p in _EXEMPT_PREFIXES)
+    return any(
+        path == p or path.startswith(p + "/") or path.startswith(p) for p in _EXEMPT_PREFIXES
+    )
 
 
 async def first_run_gate(
@@ -1217,6 +1228,7 @@ At the end of `__init__` (after the `self._tracker = Tracker(...)` block), add:
 Add these methods to the class:
 
 ```python
+# fmt: off
     # -- live-frame tap API (MVP-2) --
     def add_viewer(self) -> None:
         with self._frame_lock:
@@ -1459,6 +1471,7 @@ without the lifecycle lock — a plain attribute read, so viewers can be added
 even during a restart):
 
 ```python
+# fmt: off
     # -- live-frame tap delegation (runner owns the slots) --
     def add_viewer(self) -> None:
         r = self._runner
@@ -1610,6 +1623,7 @@ MJPEG: one shared annotated-frame slot, read at a fixed fps regardless of
 camera rate. Viewer refcount is incremented on entry and decremented in a
 finally so the runner stops encoding when nobody is watching.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -1623,8 +1637,14 @@ import numpy as np
 def _placeholder_jpeg() -> bytes:
     img = np.zeros((480, 640, 3), dtype=np.uint8)
     cv2.putText(
-        img, "no signal", (200, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-        (255, 255, 255), 2, cv2.LINE_AA,
+        img,
+        "no signal",
+        (200, 240),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.2,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
     )
     ok, buf = cv2.imencode(".jpg", img)
     return bytes(buf)
@@ -1642,8 +1662,7 @@ async def mjpeg_generator(sup, fps: float = 5.0) -> AsyncIterator[bytes]:  # typ
             yield (
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n"
-                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n"
-                + frame + b"\r\n"
+                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
             )
             await asyncio.sleep(delay)
     finally:
@@ -1684,6 +1703,7 @@ def require_stream_auth(request: Request, token: str | None = Query(default=None
 
 ```python
 """Live MJPEG preview. Accepts a session cookie OR a ?token= stream token."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -1776,6 +1796,7 @@ Expected: PASS already? No — `sse_generator` exists (Task 10) but this verifie
 
 ```python
 """Event feed (SSE) + history/CSV (history + CSV added in Slice D)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -1876,6 +1897,7 @@ Speeds are always stored in kph (the pipeline's native unit). The display
 unit (kph | mph) is a server.units setting applied at render/export time.
 Calibration distances are entered in m/ft/in/mm and converted to mm.
 """
+
 from __future__ import annotations
 
 _KPH_PER_MPH = 1.609344
@@ -1939,7 +1961,7 @@ def repo(tmp_path: Path) -> EventRepo:
     for i in range(6):
         r.save(
             ts_utc=dt.datetime(2026, 5, 28, 12, i, 0),
-            speed_kph=20.0 + i * 5,           # 20,25,30,35,40,45
+            speed_kph=20.0 + i * 5,  # 20,25,30,35,40,45
             direction="L2R" if i % 2 == 0 else "R2L",
             frame_count=10,
             track_len_px=200,
@@ -2012,6 +2034,7 @@ class EventFilter:
 Add these methods to `EventRepo`:
 
 ```python
+# fmt: off
     def query(
         self,
         f: EventFilter,
@@ -2112,8 +2135,13 @@ def test_dashboard_renders_with_stream_and_events(client, supervisor) -> None:  
     _configure(client, supervisor)
     supervisor.events.save(
         ts_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
-        speed_kph=42.0, direction="L2R", frame_count=10, track_len_px=200,
-        image_path="events/e.jpg", thumb_path="thumbs/e.jpg", calibration_id=None,
+        speed_kph=42.0,
+        direction="L2R",
+        frame_count=10,
+        track_len_px=200,
+        image_path="events/e.jpg",
+        thumb_path="thumbs/e.jpg",
+        calibration_id=None,
     )
     resp = client.get("/")
     assert resp.status_code == 200
@@ -2134,6 +2162,7 @@ Expected: FAIL (no `/` page route / templating).
 
 ```python
 """Shared Jinja2 environment + template filters."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -2276,6 +2305,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 ```python
 """Server-rendered pages."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -2376,8 +2406,10 @@ def _seed(supervisor, n: int = 5) -> None:  # type: ignore[no-untyped-def]
             ts_utc=dt.datetime(2026, 5, 28, 12, i, 0),
             speed_kph=20.0 + i * 10,
             direction="L2R" if i % 2 == 0 else "R2L",
-            frame_count=10, track_len_px=200,
-            image_path=f"events/e_{i}.jpg", thumb_path=f"thumbs/e_{i}.jpg",
+            frame_count=10,
+            track_len_px=200,
+            image_path=f"events/e_{i}.jpg",
+            thumb_path=f"thumbs/e_{i}.jpg",
             calibration_id=None,
         )
 
@@ -2467,13 +2499,16 @@ def events_page(
     units = sup.config_store.load().server.units
     limit = 24
     rows = sup.events.query(EventFilter(), limit=limit)
-    next_cursor = (
-        f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == limit else ""
-    )
+    next_cursor = f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == limit else ""
     return templates.TemplateResponse(
         "events.html",
-        {"request": request, "events": rows, "units": units,
-         "next_cursor": next_cursor, "query": ""},
+        {
+            "request": request,
+            "events": rows,
+            "units": units,
+            "next_cursor": next_cursor,
+            "query": "",
+        },
     )
 ```
 
@@ -2541,19 +2576,29 @@ def api_events(
 ) -> HTMLResponse:
     f, units = _parse_filter(sup, start, end, min_speed, max_speed, direction)
     rows = sup.events.query(f, cursor=_parse_cursor(cursor), limit=_PAGE)
-    next_cursor = (
-        f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == _PAGE else ""
-    )
+    next_cursor = f"{rows[-1].ts_utc.isoformat()}|{rows[-1].id}" if len(rows) == _PAGE else ""
     query = urlencode(
-        {k: v for k, v in {
-            "start": start, "end": end, "min_speed": min_speed,
-            "max_speed": max_speed, "direction": direction,
-        }.items() if v is not None}
+        {
+            k: v
+            for k, v in {
+                "start": start,
+                "end": end,
+                "min_speed": min_speed,
+                "max_speed": max_speed,
+                "direction": direction,
+            }.items()
+            if v is not None
+        }
     )
     return templates.TemplateResponse(
         "partials/events_rows.html",
-        {"request": request, "events": rows, "units": units,
-         "next_cursor": next_cursor, "query": query},
+        {
+            "request": request,
+            "events": rows,
+            "units": units,
+            "next_cursor": next_cursor,
+            "query": query,
+        },
     )
 ```
 
@@ -2601,8 +2646,13 @@ def test_csv_export_headers_and_unit_conversion(client, supervisor) -> None:  # 
     _configure(client, supervisor)
     supervisor.events.save(
         ts_utc=dt.datetime(2026, 5, 28, 12, 0, 0),
-        speed_kph=80.4672, direction="L2R", frame_count=10, track_len_px=200,
-        image_path="events/e.jpg", thumb_path="thumbs/e.jpg", calibration_id=None,
+        speed_kph=80.4672,
+        direction="L2R",
+        frame_count=10,
+        track_len_px=200,
+        image_path="events/e.jpg",
+        thumb_path="thumbs/e.jpg",
+        calibration_id=None,
     )
     resp = client.get("/api/events.csv")
     assert resp.status_code == 200
@@ -2654,11 +2704,20 @@ def api_events_csv(
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(
-            ["id", "ts_utc", "speed", "units", "direction",
-             "frame_count", "track_len_px", "image_path"]
+            [
+                "id",
+                "ts_utc",
+                "speed",
+                "units",
+                "direction",
+                "frame_count",
+                "track_len_px",
+                "image_path",
+            ]
         )
         yield buf.getvalue()
-        buf.seek(0); buf.truncate(0)
+        buf.seek(0)
+        buf.truncate(0)
 
         cursor: tuple[dt.datetime, int] | None = None
         while True:
@@ -2666,13 +2725,21 @@ def api_events_csv(
             if not page:
                 break
             for e in page:
-                w.writerow([
-                    e.id, f"{e.ts_utc.isoformat()}Z",
-                    round(kph_to_display(float(e.speed_kph), units), 1), units,
-                    e.direction, e.frame_count, e.track_len_px, e.image_path,
-                ])
+                w.writerow(
+                    [
+                        e.id,
+                        f"{e.ts_utc.isoformat()}Z",
+                        round(kph_to_display(float(e.speed_kph), units), 1),
+                        units,
+                        e.direction,
+                        e.frame_count,
+                        e.track_len_px,
+                        e.image_path,
+                    ]
+                )
             yield buf.getvalue()
-            buf.seek(0); buf.truncate(0)
+            buf.seek(0)
+            buf.truncate(0)
             cursor = (page[-1].ts_utc, page[-1].id)
 
     return StreamingResponse(
@@ -2752,6 +2819,7 @@ Expected: FAIL (`ConfigStore` has no `load_raw`).
 - [ ] **Step 3: Add `load_raw`/`save_raw` to `src/curbcam/config/store.py`**
 
 ```python
+# fmt: off
     def load_raw(self) -> dict:
         """Return the YAML dict as-on-disk, WITHOUT env-var overlay.
 
@@ -2810,6 +2878,7 @@ Each descriptor carries label/help (from config.defaults.FIELD_LABELS), the
 current value, an input kind, and whether the field is shadowed by an env var
 (rendered read-only). crop is excluded — it is set by the alignment wizard.
 """
+
 from __future__ import annotations
 
 import os
@@ -2950,8 +3019,12 @@ def settings_page(
     raw = sup.config_store.load_raw()
     return templates.TemplateResponse(
         "settings.html",
-        {"request": request, "groups": build_groups(raw),
-         "tokens": sup.auth.list_stream_tokens(), "saved": False},
+        {
+            "request": request,
+            "groups": build_groups(raw),
+            "tokens": sup.auth.list_stream_tokens(),
+            "saved": False,
+        },
     )
 ```
 
@@ -3043,6 +3116,7 @@ Expected: FAIL (no `/api/settings` route).
 Env-shadowed fields are read-only in the form and therefore not posted, so
 the saved YAML never bakes in an env value (spec §5).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -3164,13 +3238,19 @@ def test_purge_old_events(client, supervisor) -> None:  # type: ignore[no-untype
     _configure(client, supervisor)
     old = dt.datetime(2020, 1, 1, 0, 0, 0)
     supervisor.events.save(
-        ts_utc=old, speed_kph=30.0, direction="L2R", frame_count=10,
-        track_len_px=100, image_path="events/o.jpg", thumb_path="thumbs/o.jpg",
+        ts_utc=old,
+        speed_kph=30.0,
+        direction="L2R",
+        frame_count=10,
+        track_len_px=100,
+        image_path="events/o.jpg",
+        thumb_path="thumbs/o.jpg",
         calibration_id=None,
     )
     resp = client.post("/api/events/purge", data={"days": "30"})
     assert resp.status_code in (200, 204)
     from curbcam.storage.repositories import EventFilter
+
     assert supervisor.events.query(EventFilter()) == []
 ```
 
@@ -3308,6 +3388,7 @@ capture: freeze the current live frame as a JPEG for measurement. The
 frontend reads the source resolution from the returned image's
 naturalWidth/naturalHeight, so no separate dimensions payload is needed.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -3372,7 +3453,9 @@ def test_measure_computes_mm_per_px_l2r(client, supervisor) -> None:  # type: ig
     # 100 px apart, 5 m real distance -> 5000 mm / 100 px = 50 mm/px.
     body = {
         "points": [[100, 100], [200, 100]],
-        "distance": 5.0, "units": "m", "direction": "L2R",
+        "distance": 5.0,
+        "units": "m",
+        "direction": "L2R",
     }
     resp = client.post("/api/calibration/measure", json=body)
     assert resp.status_code == 200
@@ -3389,7 +3472,9 @@ def test_measure_rejects_out_of_bounds_points(client, supervisor) -> None:  # ty
     # Default resolution is 1280x720; y=9999 is out of bounds.
     body = {
         "points": [[10, 10], [20, 9999]],
-        "distance": 1.0, "units": "m", "direction": "L2R",
+        "distance": 1.0,
+        "units": "m",
+        "direction": "L2R",
     }
     resp = client.post("/api/calibration/measure", json=body)
     assert resp.status_code == 422
@@ -3397,15 +3482,27 @@ def test_measure_rejects_out_of_bounds_points(client, supervisor) -> None:  # ty
 
 def test_measure_second_direction_preserves_first(client, supervisor) -> None:  # type: ignore[no-untyped-def]
     _login(client, supervisor)
-    client.post("/api/calibration/measure", json={
-        "points": [[100, 100], [200, 100]], "distance": 5.0, "units": "m", "direction": "L2R",
-    })
-    client.post("/api/calibration/measure", json={
-        "points": [[100, 100], [300, 100]], "distance": 5.0, "units": "m", "direction": "R2L",
-    })
+    client.post(
+        "/api/calibration/measure",
+        json={
+            "points": [[100, 100], [200, 100]],
+            "distance": 5.0,
+            "units": "m",
+            "direction": "L2R",
+        },
+    )
+    client.post(
+        "/api/calibration/measure",
+        json={
+            "points": [[100, 100], [300, 100]],
+            "distance": 5.0,
+            "units": "m",
+            "direction": "R2L",
+        },
+    )
     active = supervisor.calibrations.get_active()
-    assert float(active.mm_per_px_l2r) == 50.0      # preserved
-    assert float(active.mm_per_px_r2l) == 25.0      # 5000 / 200
+    assert float(active.mm_per_px_l2r) == 50.0  # preserved
+    assert float(active.mm_per_px_r2l) == 25.0  # 5000 / 200
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -3461,7 +3558,7 @@ def measure(
 ) -> dict:
     settings = sup.config_store.load()
     w, h = settings.camera.resolution
-    for (x, y) in body.points:
+    for x, y in body.points:
         if not (0 <= x <= w and 0 <= y <= h):
             raise HTTPException(status_code=422, detail="point out of frame bounds")
 
@@ -3773,6 +3870,7 @@ Rect is in SOURCE-frame coordinates (the JS scales display->source). On
 save: validate against the configured resolution, persist detector.crop,
 graceful restart.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -4075,6 +4173,7 @@ Expected: FAIL (no `/setup` page / `/api/setup/*`).
 
 ```python
 """First-run wizard endpoints. /api/setup/* is gate-exempt."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -4183,6 +4282,7 @@ markers = ["e2e: browser end-to-end tests (require playwright browsers)"]
 
 ```python
 """A real uvicorn server in a background thread for browser tests."""
+
 from __future__ import annotations
 
 import socket
@@ -4230,14 +4330,20 @@ def live_server(tmp_path: Path) -> Iterator[tuple[str, Supervisor]]:
     ensure_schema(db)
     store = ConfigStore(tmp_path / "curbcam.yaml")
     s = store.load()
-    s = s.model_copy(update={"camera": s.camera.model_copy(
-        update={"source": f"file:{frames}", "resolution": (640, 480)})})
+    s = s.model_copy(
+        update={
+            "camera": s.camera.model_copy(
+                update={"source": f"file:{frames}", "resolution": (640, 480)}
+            )
+        }
+    )
     store.save(s)
     auth = AuthStore(tmp_path / "auth.json")
     auth.set_password("pw")
 
-    sup = Supervisor(config_store=store, db=db, bus=EventBus(),
-                     media_root=tmp_path / "media", auth_store=auth)
+    sup = Supervisor(
+        config_store=store, db=db, bus=EventBus(), media_root=tmp_path / "media", auth_store=auth
+    )
     app = create_app(sup)
     port = _free_port()
     server = _Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))

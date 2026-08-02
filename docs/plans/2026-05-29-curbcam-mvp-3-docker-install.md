@@ -139,6 +139,7 @@ git commit -m "build(discovery): add zeroconf dep + discovery package skeleton"
 """detect_lan_ip uses a UDP socket's chosen source address (no packet sent)
 and falls back to loopback on any OSError. Both paths are tested without
 real networking by substituting a fake socket."""
+
 from __future__ import annotations
 
 import socket
@@ -254,6 +255,7 @@ git commit -m "feat(discovery): detect_lan_ip via UDP-connect source address"
 # tests/unit/discovery/test_mdns.py
 """MDNSPublisher builds the right ServiceInfo and registers/unregisters it.
 A fake Zeroconf is injected so no multicast happens in the test."""
+
 from __future__ import annotations
 
 import socket
@@ -407,6 +409,7 @@ git commit -m "feat(discovery): MDNSPublisher (python-zeroconf curbcam.local)"
 """/healthz must answer 200 even on a brand-new, unconfigured install —
 the first-run gate must NOT redirect it (the Docker HEALTHCHECK + CI smoke
 test depend on this)."""
+
 from fastapi.testclient import TestClient
 
 
@@ -531,6 +534,7 @@ The change is additive: `create_app` is untouched (stays pure); mDNS lives only 
 """serve must start/stop the mDNS publisher around uvicorn and print the
 banner when mDNS is enabled, and skip the publisher entirely with --no-mdns.
 uvicorn.run is patched so no socket is bound."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -571,8 +575,17 @@ def test_serve_starts_and_stops_publisher_and_prints_banner(tmp_path: Path, monk
     _patch(monkeypatch)
     result = runner.invoke(
         app,
-        ["serve", "--port", "8080", "--config", str(tmp_path / "c.yaml"),
-         "--data-dir", str(tmp_path / "data"), "--media-dir", str(tmp_path / "media")],
+        [
+            "serve",
+            "--port",
+            "8080",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert len(_FakePublisher.instances) == 1
@@ -587,8 +600,16 @@ def test_serve_no_mdns_skips_publisher(tmp_path: Path, monkeypatch) -> None:  # 
     _patch(monkeypatch)
     result = runner.invoke(
         app,
-        ["serve", "--no-mdns", "--config", str(tmp_path / "c.yaml"),
-         "--data-dir", str(tmp_path / "data"), "--media-dir", str(tmp_path / "media")],
+        [
+            "serve",
+            "--no-mdns",
+            "--config",
+            str(tmp_path / "c.yaml"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--media-dir",
+            str(tmp_path / "media"),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert _FakePublisher.instances == []
@@ -687,6 +708,7 @@ This is the migrate-on-boot mechanism (spec §6). `ensure_schema` is bootstrap-o
 # tests/integration/test_cli_db_upgrade.py
 """`db upgrade` runs alembic against the --data-dir sqlite and leaves it at
 head. Runs from the repo root so alembic.ini + migrations/ resolve."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -711,9 +733,7 @@ def test_db_upgrade_brings_fresh_db_to_head(tmp_path: Path) -> None:
         ver = con.execute("SELECT version_num FROM alembic_version").fetchone()
         tables = {
             r[0]
-            for r in con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
     finally:
         con.close()
